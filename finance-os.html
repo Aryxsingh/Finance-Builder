@@ -1,0 +1,1791 @@
+<title>Finance OS</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Figtree:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: one-column phone app — scrolling screen, sticky title bar, fixed bottom tab bar with a raised Add button. */
+:root {
+  --bg: #f3f5f2;           /* faint green-grey paper */
+  --surface: #ffffff;
+  --surface-2: #e9ede8;
+  --line: #d9dfd8;
+  --fg: #121a16;
+  --fg-2: #4b5751;
+  --fg-3: #7d8983;
+  --accent: #0e7a5c;       /* rupee-note green */
+  --accent-ink: #ffffff;
+  --accent-soft: #d8efe6;
+  --good: #0f8a3a;
+  --warn: #b07800;
+  --warn-soft: #fbefd2;
+  --bad: #c43434;
+  --bad-soft: #f9dede;
+  --c-income: #2a78d6;
+  --c-spend: #eb6834;
+  --c-3: #1baf7a;
+  --shadow: 0 1px 2px rgba(18, 26, 22, .06), 0 6px 24px rgba(18, 26, 22, .06);
+  --font-display: "Bricolage Grotesque", "Avenir Next", system-ui, sans-serif;
+  --font-body: "Figtree", -apple-system, "Segoe UI", system-ui, sans-serif;
+  --r: 18px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0d1210; --surface: #161d1a; --surface-2: #202925; --line: #2b3631;
+    --fg: #ecf2ee; --fg-2: #aab6b0; --fg-3: #75827c;
+    --accent: #3fc79a; --accent-ink: #062018; --accent-soft: #163a2e;
+    --good: #43c76c; --warn: #f0b429; --warn-soft: #3a2f12; --bad: #f06a6a; --bad-soft: #3d1b1b;
+    --c-income: #3987e5; --c-spend: #d95926; --c-3: #199e70;
+    --shadow: 0 1px 2px rgba(0,0,0,.4); color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0d1210; --surface: #161d1a; --surface-2: #202925; --line: #2b3631;
+  --fg: #ecf2ee; --fg-2: #aab6b0; --fg-3: #75827c;
+  --accent: #3fc79a; --accent-ink: #062018; --accent-soft: #163a2e;
+  --good: #43c76c; --warn: #f0b429; --warn-soft: #3a2f12; --bad: #f06a6a; --bad-soft: #3d1b1b;
+  --c-income: #3987e5; --c-spend: #d95926; --c-3: #199e70;
+  --shadow: 0 1px 2px rgba(0,0,0,.4); color-scheme: dark;
+}
+html, body { height: 100%; }
+body { background: var(--bg); color: var(--fg); font-family: var(--font-body); font-size: 15px; -webkit-font-smoothing: antialiased; -webkit-tap-highlight-color: transparent; }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 30; background: var(--bg); }
+* { box-sizing: border-box; }
+button, input, select, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.num { font-variant-numeric: tabular-nums; }
+#root { max-width: 560px; margin: 0 auto; min-height: 100%; }
+
+.screen { padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 0 calc(110px + env(safe-area-inset-bottom, 0px)); display: flex; flex-direction: column; gap: 14px; }
+.topbar { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 20; background: var(--bg); display: flex; align-items: center; gap: 10px; padding-block: 14px 8px; }
+.topbar h1 { font-family: var(--font-display); font-weight: 700; font-size: 26px; letter-spacing: -.02em; margin: 0; flex: 1; min-width: 0; }
+.topbar .sub { color: var(--fg-3); font-size: 13px; }
+.iconbtn { width: 40px; height: 40px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface); display: grid; place-items: center; flex: none; }
+.iconbtn svg { width: 20px; height: 20px; }
+
+.card { background: var(--surface); border-radius: var(--r); padding: 16px; box-shadow: var(--shadow); min-width: 0; }
+.card h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .07em; color: var(--fg-3); font-weight: 600; margin: 0 0 12px; display: flex; align-items: center; gap: 8px; }
+.card h2 .spacer { flex: 1; }
+.card h2 button { text-transform: none; letter-spacing: 0; }
+.muted { color: var(--fg-3); }
+.small { font-size: 13px; }
+.row { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.row .grow { flex: 1; min-width: 0; }
+.stack { display: flex; flex-direction: column; gap: 10px; }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.ellipsis { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Hero: Safe to Spend */
+.hero { background: var(--accent); color: var(--accent-ink); border-radius: 24px; padding: 20px; display: flex; flex-direction: column; gap: 6px; }
+.hero .label { font-size: 12px; letter-spacing: .14em; text-transform: uppercase; font-weight: 700; opacity: .85; }
+.hero .big { font-family: var(--font-display); font-size: clamp(40px, 13vw, 56px); font-weight: 700; letter-spacing: -.03em; line-height: 1; }
+.hero .meta { font-size: 14px; opacity: .9; }
+.hero .break { margin-top: 10px; border-top: 1px solid color-mix(in srgb, var(--accent-ink) 25%, transparent); padding-top: 10px; display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; font-size: 14px; }
+.hero button.link { color: inherit; opacity: .9; }
+.hero.short { background: var(--bad); color: #fff; }
+
+.stat { background: var(--surface); border-radius: 16px; padding: 12px 14px; box-shadow: var(--shadow); display: flex; flex-direction: column; gap: 2px; min-width: 0; text-align: left; border: 0; }
+.stat .k { font-size: 12px; color: var(--fg-3); font-weight: 600; }
+.stat .v { font-family: var(--font-display); font-size: 21px; font-weight: 700; letter-spacing: -.02em; }
+.stat .s { font-size: 12px; color: var(--fg-3); }
+
+.pill { display: inline-flex; align-items: center; gap: 5px; padding: 3px 9px; border-radius: 999px; font-size: 12px; font-weight: 600; background: var(--surface-2); color: var(--fg-2); white-space: nowrap; }
+.pill.good { background: var(--accent-soft); color: var(--good); }
+.pill.warn { background: var(--warn-soft); color: var(--warn); }
+.pill.bad { background: var(--bad-soft); color: var(--bad); }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; flex: none; }
+
+.bar { height: 8px; border-radius: 99px; background: var(--surface-2); overflow: hidden; }
+.bar > i { display: block; height: 100%; border-radius: 99px; background: var(--accent); }
+.bar.warn > i { background: var(--warn); } .bar.bad > i { background: var(--bad); }
+
+.tx { display: flex; align-items: center; gap: 12px; padding: 10px 0; border: 0; background: none; width: 100%; text-align: left; border-bottom: 1px solid var(--line); }
+.tx:last-child { border-bottom: 0; }
+.tx .ic { width: 38px; height: 38px; border-radius: 12px; background: var(--surface-2); display: grid; place-items: center; font-weight: 700; font-size: 14px; color: var(--fg-2); flex: none; }
+.tx .amt { font-weight: 700; white-space: nowrap; }
+.tx .amt.in { color: var(--good); }
+.daylabel { font-size: 12px; font-weight: 700; color: var(--fg-3); text-transform: uppercase; letter-spacing: .06em; padding-top: 6px; display: flex; justify-content: space-between; }
+
+/* Bottom nav */
+.nav { position: fixed; left: 0; right: 0; bottom: 0; z-index: 25; background: var(--surface); border-top: 1px solid var(--line); padding-bottom: env(safe-area-inset-bottom, 0px); padding-left: env(safe-area-inset-left, 0px); padding-right: env(safe-area-inset-right, 0px); }
+.nav .in { max-width: 560px; margin: 0 auto; display: grid; grid-template-columns: repeat(6, 1fr); align-items: end; }
+.nav button { background: none; border: 0; display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 8px 0 8px; font-size: 11px; font-weight: 600; color: var(--fg-3); }
+.nav button svg { width: 22px; height: 22px; }
+.nav button.on { color: var(--accent); }
+.nav .add { position: relative; }
+.nav .add span.fab { width: 54px; height: 54px; border-radius: 18px; background: var(--accent); color: var(--accent-ink); display: grid; place-items: center; margin-top: -22px; box-shadow: 0 6px 18px color-mix(in srgb, var(--accent) 45%, transparent); }
+.nav .add span.fab svg { width: 28px; height: 28px; }
+
+/* Forms */
+.field { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+.field label, .lbl { font-size: 12px; font-weight: 600; color: var(--fg-2); }
+.input, select.input, textarea.input { width: 100%; min-width: 0; padding: 11px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); font-size: 16px; }
+textarea.input { min-height: 64px; resize: vertical; }
+.btn { border: 0; border-radius: 14px; padding: 12px 16px; font-weight: 700; background: var(--surface-2); color: var(--fg); display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+.btn.primary { background: var(--accent); color: var(--accent-ink); }
+.btn.danger { background: var(--bad-soft); color: var(--bad); }
+.btn.block { width: 100%; }
+.btn.sm { padding: 7px 12px; font-size: 13px; border-radius: 10px; }
+.btn:disabled { opacity: .5; }
+.link { background: none; border: 0; padding: 0; color: var(--accent); font-weight: 600; font-size: 13px; }
+.seg { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; background: var(--surface-2); padding: 3px; border-radius: 12px; gap: 3px; }
+.seg button { border: 0; background: none; border-radius: 9px; padding: 8px 6px; font-weight: 600; font-size: 14px; color: var(--fg-2); }
+.seg button.on { background: var(--surface); color: var(--fg); box-shadow: var(--shadow); }
+.chips { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px; scrollbar-width: none; }
+.chips.wrap { flex-wrap: wrap; overflow: visible; }
+.chip { border: 1px solid var(--line); background: var(--surface); border-radius: 999px; padding: 7px 12px; font-size: 14px; font-weight: 500; white-space: nowrap; flex: none; }
+.chip.on { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+
+/* Sheet */
+.scrim { position: fixed; inset: 0; background: rgba(5, 10, 8, .45); z-index: 40; display: flex; align-items: flex-end; justify-content: center; }
+.sheet { background: var(--bg); width: 100%; max-width: 560px; max-height: calc(100% - 24px - env(safe-area-inset-top, 0px)); border-radius: 22px 22px 0 0; overflow-y: auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 8px calc(20px + env(safe-area-inset-bottom, 0px)); display: flex; flex-direction: column; gap: 14px; overscroll-behavior: contain; }
+.sheet .grab { width: 40px; height: 5px; border-radius: 9px; background: var(--line); margin: 4px auto 0; flex: none; }
+.sheet .head { display: flex; align-items: center; gap: 10px; }
+.sheet .head h3 { margin: 0; flex: 1; font-family: var(--font-display); font-size: 22px; letter-spacing: -.02em; }
+.amount-in { display: flex; align-items: baseline; gap: 4px; border-bottom: 2px solid var(--accent); padding-bottom: 4px; }
+.amount-in span { font-family: var(--font-display); font-size: 34px; color: var(--fg-3); }
+.amount-in input { border: 0; background: none; outline: none; font-family: var(--font-display); font-size: 44px; font-weight: 700; width: 100%; min-width: 0; letter-spacing: -.02em; padding: 0; }
+
+.banner { border-radius: 14px; padding: 12px 14px; font-size: 14px; display: flex; gap: 10px; align-items: flex-start; }
+.banner.warn { background: var(--warn-soft); color: var(--fg); }
+.banner.bad { background: var(--bad-soft); color: var(--fg); }
+.banner.info { background: var(--accent-soft); color: var(--fg); }
+.toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(92px + env(safe-area-inset-bottom, 0px)); background: var(--fg); color: var(--bg); padding: 10px 16px; border-radius: 12px; z-index: 60; font-weight: 600; font-size: 14px; max-width: calc(100% - 32px); }
+.savechip { font-size: 12px; color: var(--fg-3); display: inline-flex; gap: 5px; align-items: center; }
+.savechip.err { color: var(--bad); font-weight: 600; }
+
+/* Charts */
+.chart { width: 100%; display: block; overflow: visible; }
+.chart text { fill: var(--fg-3); font-size: 11px; font-family: var(--font-body); }
+.chart .grid { stroke: var(--line); stroke-width: 1; }
+.legend { display: flex; gap: 14px; font-size: 12px; color: var(--fg-2); flex-wrap: wrap; }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend i { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
+.tip { font-size: 13px; color: var(--fg-2); min-height: 18px; }
+
+/* Adviser */
+.msgs { display: flex; flex-direction: column; gap: 12px; }
+.msg { padding: 12px 14px; border-radius: 16px; max-width: 92%; white-space: pre-wrap; line-height: 1.45; font-size: 15px; overflow-wrap: anywhere; }
+.msg.me { align-self: flex-end; background: var(--accent); color: var(--accent-ink); border-bottom-right-radius: 6px; }
+.msg.ai { align-self: flex-start; background: var(--surface); box-shadow: var(--shadow); border-bottom-left-radius: 6px; }
+.verdict { display: inline-flex; align-items: center; gap: 8px; font-family: var(--font-display); font-weight: 700; font-size: 18px; padding: 6px 12px; border-radius: 10px; margin-bottom: 8px; }
+.verdict.YES { background: var(--accent-soft); color: var(--good); }
+.verdict.WAIT { background: var(--warn-soft); color: var(--warn); }
+.verdict.NO { background: var(--bad-soft); color: var(--bad); }
+.composer { position: sticky; bottom: calc(72px + env(safe-area-inset-bottom, 0px)); background: var(--bg); padding-block: 8px; display: flex; gap: 8px; }
+.composer textarea { flex: 1; min-height: 46px; max-height: 120px; }
+details > summary { cursor: pointer; font-weight: 600; font-size: 14px; color: var(--accent); list-style: none; }
+details > summary::-webkit-details-marker { display: none; }
+pre.ctx { white-space: pre-wrap; font-size: 12px; background: var(--surface-2); padding: 10px; border-radius: 10px; max-height: 260px; overflow: auto; }
+
+.empty { text-align: center; padding: 18px 8px; color: var(--fg-3); font-size: 14px; }
+.steps { display: flex; gap: 5px; } .steps i { flex: 1; height: 4px; border-radius: 9px; background: var(--line); } .steps i.on { background: var(--accent); }
+.item { border: 1px solid var(--line); border-radius: 14px; padding: 12px; display: flex; flex-direction: column; gap: 10px; background: var(--surface); }
+.kv { display: grid; grid-template-columns: 1fr auto; gap: 6px 12px; font-size: 14px; }
+.kv > :nth-child(even) { text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; }
+@media (prefers-reduced-motion: no-preference) { .sheet { animation: up .18s ease-out; } @keyframes up { from { transform: translateY(24px); opacity: .6; } } }
+@media (max-width: 360px) { .grid3 { grid-template-columns: 1fr 1fr; } }
+</style>
+<div id="root"><div style="padding:40px 16px;text-align:center;color:#7d8983">Opening Finance OS…</div></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/htm@3.1.1/dist/htm.umd.js"></script>
+<script>
+/* Finance OS — calculation core. Pure functions only (no DOM, no storage),
+   so the same file runs in the page and under Node for tests. */
+(function (root) {
+  'use strict';
+
+  const DEFAULT_CATEGORIES = [
+    'Rent', 'Groceries', 'Food & Dining', 'Transportation', 'Shopping',
+    'Entertainment', 'Bills & Utilities', 'Medical', 'Travel', 'EMIs',
+    'Credit Card Payments', 'Investments', 'Subscriptions', 'Personal', 'Other',
+  ];
+  const INCOME_CATEGORIES = ['Salary', 'Freelance', 'Bonus', 'From friends', 'Reimbursement', 'Other income'];
+  const METHODS = ['UPI', 'Cash', 'HDFC Credit Card', 'Other Credit Card', 'Bank Transfer', 'Other'];
+  const CARD_METHODS = ['HDFC Credit Card', 'Other Credit Card'];
+  // Categories that move money but are not consumption.
+  const CARD_PAYMENT = 'Credit Card Payments';
+  const INVESTMENT = 'Investments';
+  const ASSET_TYPES = ['Bank savings', 'Emergency fund', 'Fixed deposit', 'Mutual funds', 'Stocks', 'Other investment'];
+
+  // ---------- dates ----------
+  const pad = (n) => String(n).padStart(2, '0');
+  const iso = (d) => d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+  const parse = (s) => { const [y, m, d] = String(s).split('-').map(Number); return new Date(y, (m || 1) - 1, d || 1); };
+  const monthKey = (s) => String(s).slice(0, 7);
+  const daysInMonth = (y, m0) => new Date(y, m0 + 1, 0).getDate();
+  const addMonths = (s, n) => {
+    const d = parse(s); const day = d.getDate();
+    const t = new Date(d.getFullYear(), d.getMonth() + n, 1);
+    t.setDate(Math.min(day, daysInMonth(t.getFullYear(), t.getMonth())));
+    return iso(t);
+  };
+  const shiftMonthKey = (mk, n) => addMonths(mk + '-01', n).slice(0, 7);
+  const daysBetween = (a, b) => Math.round((parse(b) - parse(a)) / 86400000);
+  /** The next date (>= today) falling on day-of-month `day`. */
+  const nextOnDay = (today, day) => {
+    const t = parse(today);
+    const clamp = (y, m) => Math.min(day, daysInMonth(y, m));
+    let d = new Date(t.getFullYear(), t.getMonth(), clamp(t.getFullYear(), t.getMonth()));
+    if (d < t) { const y = t.getFullYear(), m = t.getMonth() + 1; d = new Date(y, m, clamp(y, m)); }
+    return iso(d);
+  };
+
+  const num = (v) => { const n = Number(v); return Number.isFinite(n) ? n : 0; };
+  const sum = (arr, f) => arr.reduce((a, x) => a + num(f ? f(x) : x), 0);
+  const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+
+  // ---------- transaction semantics ----------
+  const isCardMethod = (m) => CARD_METHODS.includes(m);
+  /** Counts as spending: an expense that is not a card-bill payment or an investment. */
+  const isSpend = (t) => t.type === 'expense' && t.category !== CARD_PAYMENT && t.category !== INVESTMENT;
+  /** The part of a spend that is mine (shared bills: others' share is a receivable). */
+  const myShare = (t) => Math.max(0, num(t.amount) - num(t.othersOwe));
+  /** Cash leaving the bank account (card purchases leave later, via the bill payment). */
+  const bankOut = (t) => t.type === 'expense' && !isCardMethod(t.method) ? num(t.amount) : 0;
+  const bankIn = (t) => t.type === 'income' ? num(t.amount) : 0;
+
+  /** Did `t` happen after a manual figure entered on `asOf` (ms timestamp `ts` breaks same-day ties)? */
+  const isAfter = (t, asOf, ts) => t.date > asOf || (t.date === asOf && ts != null && (t.createdAt || 0) > ts);
+
+  function monthTx(txs, mk) { return txs.filter((t) => monthKey(t.date) === mk); }
+
+  function monthSummary(txs, mk) {
+    const list = monthTx(txs, mk);
+    const income = sum(list.filter((t) => t.type === 'income'), (t) => t.amount);
+    const spend = sum(list.filter(isSpend), myShare);
+    const invested = sum(list.filter((t) => t.type === 'expense' && t.category === INVESTMENT), (t) => t.amount);
+    const cardPaid = sum(list.filter((t) => t.type === 'expense' && t.category === CARD_PAYMENT), (t) => t.amount);
+    const net = income - spend;
+    return { mk, income, spend, invested, cardPaid, net, savingsRate: income > 0 ? net / income : null, count: list.length };
+  }
+
+  function byKey(list, keyFn, valFn) {
+    const m = new Map();
+    for (const t of list) { const k = keyFn(t); m.set(k, (m.get(k) || 0) + valFn(t)); }
+    return [...m.entries()].map(([k, v]) => ({ k, v })).sort((a, b) => b.v - a.v);
+  }
+
+  // ---------- cards ----------
+  /** Outstanding = balance entered at `asOf` + card purchases after it − bill payments after it. */
+  function cardOutstanding(card, txs) {
+    const after = txs.filter((t) => t.cardId === card.id && isAfter(t, card.asOf || '0000', card.asOfTs));
+    const purchases = sum(after.filter((t) => t.type === 'expense' && t.category !== CARD_PAYMENT), (t) => t.amount);
+    const refunds = sum(after.filter((t) => t.type === 'income'), (t) => t.amount);
+    const paid = sum(after.filter((t) => t.type === 'expense' && t.category === CARD_PAYMENT), (t) => t.amount);
+    return Math.max(0, num(card.outstanding) + purchases - refunds - paid);
+  }
+
+  // ---------- IOUs ----------
+  const iouPaid = (x) => sum(x.payments || [], (p) => p.amount);
+  const iouLeft = (x) => Math.max(0, num(x.amount) - iouPaid(x));
+  const iouStatus = (x, today) => {
+    const left = iouLeft(x);
+    if (left <= 0) return 'Settled';
+    if (iouPaid(x) > 0) return 'Partly paid';
+    const due = x.expected || x.due;
+    if (due && due < today) return 'Overdue';
+    return 'Open';
+  };
+
+  // ---------- bank balance ----------
+  /** Bank balance: the last manual figure, rolled forward by everything recorded after it. */
+  function bankBalance(s, txs) {
+    const asOf = s.bank && s.bank.asOf;
+    if (!asOf || s.bank.amount === '' || s.bank.amount == null) return null;
+    const after = txs.filter((t) => isAfter(t, asOf, s.bank.asOfTs));
+    let bal = num(s.bank.amount) + sum(after, bankIn) - sum(after, bankOut);
+    for (const x of s.lent || []) {
+      if (!x.txId && x.date > asOf) bal -= num(x.amount);
+      bal += sum((x.payments || []).filter((p) => p.date > asOf), (p) => p.amount);
+    }
+    for (const x of s.borrowed || []) {
+      if (x.date && x.date > asOf) bal += num(x.amount);
+      bal -= sum((x.payments || []).filter((p) => p.date > asOf), (p) => p.amount);
+    }
+    return bal;
+  }
+
+  // ---------- obligations ----------
+  function nextPayday(s, today) { return nextOnDay(today, num(s.income && s.income.payday) || 1); }
+
+  /** Was a fixed bill already paid this month? Match by category or name, ±15% amount. */
+  function fixedPaid(f, txs, mk) {
+    return monthTx(txs, mk).some((t) => t.type === 'expense' &&
+      (t.fixedId === f.id || ((t.category === f.category || (t.name || '').toLowerCase() === (f.name || '').toLowerCase()) &&
+        Math.abs(num(t.amount) - num(f.amount)) <= num(f.amount) * 0.15)));
+  }
+
+  /** Everything that must be paid from now until (and excluding) `until`. */
+  function obligations(s, txs, today, until) {
+    const out = [];
+    const mk = monthKey(today);
+    for (const f of s.fixed || []) {
+      if (!num(f.amount)) continue;
+      const due = nextOnDay(today, num(f.dueDay) || 1);
+      const dueThisMonth = monthKey(due) === mk;
+      if (dueThisMonth && fixedPaid(f, txs, mk)) continue;
+      if (due < until) out.push({ kind: 'Bill', name: f.name, amount: num(f.amount), date: due });
+    }
+    for (const l of s.loans || []) {
+      if (!num(l.emi) || num(l.remainingEmis) <= 0 || !l.nextDate) continue;
+      if (l.nextDate < until) out.push({ kind: 'EMI', name: l.lender, amount: num(l.emi), date: l.nextDate < today ? today : l.nextDate, overdue: l.nextDate < today });
+    }
+    for (const c of s.cards || []) {
+      const owed = cardOutstanding(c, txs);
+      if (owed <= 0 || !num(c.dueDay)) continue;
+      const due = nextOnDay(today, num(c.dueDay));
+      // Statement amount if entered, otherwise everything outstanding (conservative).
+      const amt = Math.min(owed, num(c.totalDue) > 0 ? num(c.totalDue) : owed);
+      if (due < until) out.push({ kind: 'Card', name: c.bank, amount: amt, date: due, minDue: num(c.minDue) });
+    }
+    for (const p of s.planned || []) {
+      if (!p.done && p.date >= today && p.date < until) out.push({ kind: 'Planned', name: p.name, amount: num(p.amount), date: p.date });
+    }
+    for (const b of s.borrowed || []) {
+      const left = iouLeft(b);
+      if (left > 0 && b.due && b.due < until) out.push({ kind: 'Owe', name: b.person, amount: left, date: b.due < today ? today : b.due });
+    }
+    return out.sort((a, b) => a.date.localeCompare(b.date));
+  }
+
+  /** Money still to set aside this month to meet the monthly savings target. */
+  function savingsStillToSet(s, txs, today) {
+    const target = num(s.savingsTarget && s.savingsTarget.monthly);
+    if (!target) return 0;
+    const done = monthSummary(txs, monthKey(today)).invested;
+    return Math.max(0, target - done);
+  }
+
+  /**
+   * SAFE TO SPEND: bank balance until next payday, after every bill, EMI, card
+   * due, planned expense and debt falling before payday, the rest of this
+   * month's savings target, and a small cushion. Never negative.
+   */
+  function safeToSpend(s, txs, today) {
+    const bank = bankBalance(s, txs);
+    const payday = nextPayday(s, today);
+    const obs = obligations(s, txs, today, payday === today ? addMonths(today, 1) : payday);
+    const due = sum(obs, (o) => o.amount);
+    const savings = savingsStillToSet(s, txs, today);
+    const cushion = num(s.cushion);
+    const missing = [];
+    if (bank == null) missing.push('current bank balance');
+    if (!num(s.income && s.income.salary)) missing.push('monthly salary');
+    const raw = bank == null ? null : bank - due - savings - cushion;
+    const days = Math.max(1, daysBetween(today, payday) || daysInMonth(parse(today).getFullYear(), parse(today).getMonth()));
+    return {
+      bank, payday, obligations: obs, due, savings, cushion, missing,
+      safe: raw == null ? null : Math.max(0, raw), shortfall: raw != null && raw < 0 ? -raw : 0,
+      perDay: raw == null ? null : Math.max(0, raw) / days, days,
+    };
+  }
+
+  // ---------- budgets ----------
+  function budgetStatus(s, txs, mk) {
+    const spent = new Map(byKey(monthTx(txs, mk).filter(isSpend), (t) => t.category, myShare).map((x) => [x.k, x.v]));
+    const rows = Object.entries(s.budgets || {}).filter(([, v]) => num(v) > 0).map(([cat, v]) => {
+      const used = spent.get(cat) || 0; const pct = used / num(v);
+      return { cat, budget: num(v), spent: used, left: num(v) - used, pct, level: pct >= 1 ? 100 : pct >= 0.9 ? 90 : pct >= 0.75 ? 75 : 0 };
+    }).sort((a, b) => b.pct - a.pct);
+    const total = sum(rows, (r) => r.budget);
+    const used = sum(rows, (r) => r.spent);
+    const unbudgeted = [...spent.entries()].filter(([c]) => !(num((s.budgets || {})[c]) > 0)).map(([cat, v]) => ({ cat, spent: v }));
+    return { rows, total, used, left: total - used, pct: total ? used / total : null, unbudgeted };
+  }
+
+  // ---------- net worth ----------
+  function netWorth(s, txs) {
+    const bank = bankBalance(s, txs) || 0;
+    const assets = s.assets || [];
+    const assetValue = sum(assets, (a) => a.current !== '' && a.current != null ? a.current : a.invested);
+    const invested = sum(assets, (a) => a.invested);
+    const sip = sum(assets, (a) => a.sip);
+    const receivable = sum(s.lent || [], iouLeft);
+    const loanDebt = sum(s.loans || [], (l) => l.outstanding);
+    const cardDebt = sum(s.cards || [], (c) => cardOutstanding(c, txs));
+    const owe = sum(s.borrowed || [], iouLeft);
+    const totalAssets = bank + assetValue + receivable;
+    const liabilities = loanDebt + cardDebt + owe;
+    const emergency = sum(assets.filter((a) => a.type === 'Emergency fund'), (a) => a.current || a.invested);
+    const savings = sum(assets.filter((a) => a.type === 'Bank savings' || a.type === 'Emergency fund' || a.type === 'Fixed deposit'), (a) => a.current || a.invested);
+    return { bank, assetValue, invested, sip, receivable, loanDebt, cardDebt, owe, totalAssets, liabilities, net: totalAssets - liabilities, emergency, savings, emiTotal: sum((s.loans || []).filter((l) => num(l.remainingEmis) > 0), (l) => l.emi) };
+  }
+
+  // ---------- goals ----------
+  /** Average monthly net savings over the last `n` complete months that have data. */
+  function avgMonthlySavings(txs, today, n) {
+    const mk = monthKey(today); const vals = [];
+    for (let i = 1; i <= (n || 3); i++) {
+      const m = monthSummary(txs, shiftMonthKey(mk, -i));
+      if (m.count) vals.push(m.net);
+    }
+    return vals.length ? sum(vals) / vals.length : null;
+  }
+
+  function goalProgress(g, s, txs, today) {
+    const saved = g.linkNetSavings ? netWorth(s, txs).assetValue : num(g.saved);
+    const target = num(g.target); const left = Math.max(0, target - saved);
+    const avg = avgMonthlySavings(txs, today, 3);
+    const rate = num(g.monthly) || (avg && avg > 0 ? avg : 0) || num(s.savingsTarget && s.savingsTarget.monthly);
+    const months = left <= 0 ? 0 : rate > 0 ? Math.ceil(left / rate) : null;
+    return { saved, target, left, pct: target ? Math.min(1, saved / target) : 0, rate, months, eta: months == null ? null : addMonths(today, months), rateSource: num(g.monthly) ? 'your plan' : avg && avg > 0 ? '3-month average' : 'monthly target' };
+  }
+
+  // ---------- coaching (deterministic) ----------
+  function insights(s, txs, today) {
+    const out = [];
+    const mk = monthKey(today);
+    const cur = monthSummary(txs, mk); const prev = monthSummary(txs, shiftMonthKey(mk, -1));
+    const dayOfMonth = parse(today).getDate(); const dim = daysInMonth(parse(today).getFullYear(), parse(today).getMonth());
+    // Pace vs last month.
+    if (prev.spend > 0 && cur.spend > prev.spend * (dayOfMonth / dim) * 1.15 && dayOfMonth >= 5) {
+      out.push({ tone: 'warn', title: 'Spending faster than last month', body: 'You have spent ' + fmt(cur.spend) + ' in ' + dayOfMonth + ' days. At this pace the month ends near ' + fmt(cur.spend / dayOfMonth * dim) + ' against ' + fmt(prev.spend) + ' last month.' });
+    }
+    // Budgets.
+    for (const r of budgetStatus(s, txs, mk).rows) {
+      if (r.level >= 100) out.push({ tone: 'bad', title: r.cat + ' budget used up', body: fmt(r.spent) + ' spent of ' + fmt(r.budget) + ' (' + Math.round(r.pct * 100) + '%).' });
+      else if (r.level >= 75) out.push({ tone: 'warn', title: r.cat + ' at ' + Math.round(r.pct * 100) + '%', body: fmt(r.left) + ' left for the rest of the month.' });
+    }
+    // Repeated small expenses (last 30 days, same merchant, < ₹500, 4+ times).
+    const since = addMonths(today, -1);
+    const small = txs.filter((t) => isSpend(t) && t.date > since && num(t.amount) < 500 && t.name);
+    for (const m of byKey(small, (t) => t.name.trim().toLowerCase(), () => 1).filter((x) => x.v >= 4).slice(0, 3)) {
+      const total = sum(small.filter((t) => t.name.trim().toLowerCase() === m.k), (t) => t.amount);
+      out.push({ tone: 'info', title: 'Small repeats: ' + m.k, body: m.v + ' purchases in 30 days, ' + fmt(total) + ' in total. About ' + fmt(total * 12) + ' a year at this rate.' });
+    }
+    // Biggest category jump vs last month.
+    const prevCat = new Map(byKey(monthTx(txs, shiftMonthKey(mk, -1)).filter(isSpend), (t) => t.category, myShare).map((x) => [x.k, x.v]));
+    for (const c of byKey(monthTx(txs, mk).filter(isSpend), (t) => t.category, myShare).slice(0, 5)) {
+      const p = prevCat.get(c.k) || 0;
+      if (p > 0 && c.v > p * 1.3 && c.v - p > 1000) out.push({ tone: 'warn', title: c.k + ' up ' + Math.round((c.v / p - 1) * 100) + '% on last month', body: fmt(c.v) + ' so far against ' + fmt(p) + ' in all of last month.' });
+    }
+    // Savings rate trend.
+    if (prev.income > 0 && prev.savingsRate != null) {
+      const prev2 = monthSummary(txs, shiftMonthKey(mk, -2));
+      if (prev2.income > 0 && prev2.savingsRate != null) {
+        const d = prev.savingsRate - prev2.savingsRate;
+        out.push({ tone: d >= 0 ? 'good' : 'warn', title: 'Savings rate ' + (d >= 0 ? 'improved' : 'slipped'), body: 'Last month ' + Math.round(prev.savingsRate * 100) + '%, the month before ' + Math.round(prev2.savingsRate * 100) + '%.' });
+      }
+    }
+    // Card utilisation.
+    for (const c of s.cards || []) {
+      const o = cardOutstanding(c, txs);
+      if (num(c.limit) && o / num(c.limit) > 0.3) out.push({ tone: o / num(c.limit) > 0.6 ? 'bad' : 'warn', title: c.bank + ' card at ' + Math.round(o / num(c.limit) * 100) + '% of limit', body: 'Keeping card use under 30% of the limit protects your credit score. Pay the full amount due, not the minimum.' });
+    }
+    // Emergency fund.
+    const nw = netWorth(s, txs);
+    const monthlyNeed = (cur.spend > 0 ? Math.max(cur.spend, prev.spend) : prev.spend) || sum(s.fixed || [], (f) => f.amount) + nw.emiTotal;
+    if (monthlyNeed > 0 && nw.emergency < monthlyNeed * 3) out.push({ tone: 'warn', title: 'Emergency fund below 3 months', body: fmt(nw.emergency) + ' covers ' + (nw.emergency / monthlyNeed).toFixed(1) + ' months of spending. Aim for ' + fmt(monthlyNeed * 6) + ' (6 months).' });
+    return out;
+  }
+
+  /** Weekly summary numbers for the last 7 days vs the 7 before. */
+  function weekly(txs, today) {
+    const a = addDays(today, -6), b = addDays(today, -13);
+    const w = txs.filter((t) => isSpend(t) && t.date >= a && t.date <= today);
+    const p = txs.filter((t) => isSpend(t) && t.date >= b && t.date < a);
+    return { from: a, to: today, spend: sum(w, myShare), prev: sum(p, myShare), top: byKey(w, (t) => t.category, myShare).slice(0, 3), count: w.length };
+  }
+  function addDays(s, n) { const d = parse(s); d.setDate(d.getDate() + n); return iso(d); }
+
+  // ---------- duplicates ----------
+  function findDuplicate(txs, t) {
+    const name = (t.name || '').trim().toLowerCase();
+    return txs.find((x) => x.id !== t.id && x.type === t.type && x.date === t.date && num(x.amount) === num(t.amount) &&
+      (x.name || '').trim().toLowerCase() === name) || null;
+  }
+
+  // ---------- money parsing / format ----------
+  const inr = new Intl.NumberFormat('en-IN', { maximumFractionDigits: 0 });
+  function fmt(v, opts) {
+    if (v == null || !Number.isFinite(Number(v))) return '—';
+    const n = Math.round(Number(v));
+    return (n < 0 ? '−' : (opts && opts.sign && n > 0 ? '+' : '')) + '₹' + inr.format(Math.abs(n));
+  }
+  function fmtShort(v) {
+    const n = Math.abs(num(v)); const s = v < 0 ? '−' : '';
+    if (n >= 1e7) return s + '₹' + (n / 1e7).toFixed(n >= 1e8 ? 0 : 1) + 'Cr';
+    if (n >= 1e5) return s + '₹' + (n / 1e5).toFixed(n >= 1e6 ? 0 : 1) + 'L';
+    if (n >= 1e3) return s + '₹' + (n / 1e3).toFixed(n >= 1e4 ? 0 : 1) + 'k';
+    return s + '₹' + Math.round(n);
+  }
+  /** Pull a rupee amount out of free text: "₹8,000", "8k", "1.5 lakh", "15000". */
+  function parseAmount(text) {
+    const m = String(text).replace(/,/g, '').match(/(?:₹|rs\.?|inr)?\s*(\d+(?:\.\d+)?)\s*(k|thousand|l|lakh|lakhs|lac|cr|crore)?\b/i);
+    if (!m) return null;
+    let v = parseFloat(m[1]); const u = (m[2] || '').toLowerCase();
+    if (u === 'k' || u === 'thousand') v *= 1e3; else if (u[0] === 'l') v *= 1e5; else if (u[0] === 'c') v *= 1e7;
+    return v >= 1 ? v : null;
+  }
+
+  /** Purchase check the adviser is given as fixed arithmetic. */
+  function purchaseCheck(s, txs, today, amount) {
+    const st = safeToSpend(s, txs, today);
+    const nw = netWorth(s, txs);
+    const after = st.safe == null ? null : st.safe - amount;
+    const bankAfter = st.bank == null ? null : st.bank - amount;
+    let rule = null;
+    if (st.safe != null) {
+      if (amount <= st.safe * 0.5) rule = 'YES';
+      else if (amount <= st.safe) rule = 'WAIT';
+      else rule = 'NO';
+    }
+    return { amount, safeBefore: st.safe, safeAfter: after, bankAfter, payday: st.payday, dueBeforePayday: st.due, emergencyFund: nw.emergency, ruleOfThumb: rule };
+  }
+
+  /** CSV for transactions. */
+  function toCSV(txs) {
+    const cols = ['date', 'type', 'amount', 'name', 'category', 'method', 'othersOwe', 'notes'];
+    const esc = (v) => { const s = v == null ? '' : String(v); return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; };
+    return [cols.join(',')].concat([...txs].sort((a, b) => a.date.localeCompare(b.date)).map((t) => cols.map((c) => esc(t[c])).join(','))).join('\n');
+  }
+
+  function blankState() {
+    return {
+      v: 1, setupDone: false,
+      bank: { amount: '', asOf: '' },
+      income: { salary: 67000, payday: 1, sources: [] },
+      fixed: [], loans: [], cards: [], assets: [], goals: [], lent: [], borrowed: [], planned: [],
+      budgets: {}, customCategories: [], savingsTarget: { monthly: '' }, cushion: 2000,
+    };
+  }
+
+  const api = {
+    DEFAULT_CATEGORIES, INCOME_CATEGORIES, METHODS, CARD_METHODS, CARD_PAYMENT, INVESTMENT, ASSET_TYPES,
+    iso, parse, monthKey, isAfter, addMonths, addDays, shiftMonthKey, daysBetween, daysInMonth, nextOnDay, num, sum, uid,
+    isSpend, myShare, isCardMethod, monthTx, monthSummary, byKey, cardOutstanding, iouPaid, iouLeft, iouStatus,
+    bankBalance, nextPayday, obligations, safeToSpend, savingsStillToSet, budgetStatus, netWorth, avgMonthlySavings,
+    goalProgress, insights, weekly, findDuplicate, fmt, fmtShort, parseAmount, purchaseCheck, toCSV, blankState, fixedPaid,
+  };
+  if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.Core = api;
+})(typeof globalThis !== 'undefined' ? globalThis : this);
+
+</script>
+<script>
+/* Finance OS — storage, shared components and charts. */
+const { useState, useEffect, useMemo, useRef, useCallback } = React;
+const html = htm.bind(React.createElement);
+const C = window.Core;
+const today = () => C.iso(new Date());
+const MIRROR_KEY = 'financeos.mirror.v1';
+const LOCAL_KEY = 'financeos.local.v1';
+const lsGet = (k) => { try { return localStorage.getItem(k); } catch (e) { return null; } };
+const lsSet = (k, v) => { try { localStorage.setItem(k, v); return true; } catch (e) { return false; } };
+const clone = (o) => JSON.parse(JSON.stringify(o));
+/** A runtime capability, or null where this view has none (e.g. opened outside Claude). */
+const useCap = (name) => (window.claude && window.claude.use ? Promise.resolve(window.claude.use(name)).catch(() => null) : Promise.resolve(null));
+
+/* ===================== Storage =====================
+   Cloud mode: the artifact `db`, in this person's private subtree
+   data/users/<id>/ — one `profile` doc plus one `tx-YYYY-MM` doc per month.
+   Local mode (db unavailable): this browser only, and the app says so. */
+function createStore() {
+  const listeners = new Set();
+  const docs = {};
+  const dirty = new Set();
+  const queues = {};
+  let db = null, uid = null, timer = null;
+  const status = { mode: 'starting', loaded: false, confirmed: false, saving: 0, lastSaved: null, error: null, stale: false, failedDocs: [] };
+  const emit = () => listeners.forEach((f) => f());
+
+  function mirror() { lsSet(MIRROR_KEY, JSON.stringify({ at: Date.now(), docs })); }
+
+  function lastSavedFromDocs() {
+    let m = null;
+    for (const d of Object.values(docs)) if (d && d.savedAt && (!m || d.savedAt > m)) m = d.savedAt;
+    return m ? new Date(m) : null;
+  }
+
+  async function start() {
+    let user = null;
+    try { db = await useCap('db'); } catch (e) { db = null; }
+    try { user = await useCap('user'); } catch (e) { user = null; }
+    try { uid = user ? await user.id() : null; } catch (e) { uid = null; }
+    if (!db || !uid) return startLocal();
+    status.mode = 'cloud';
+    timer = setTimeout(() => { status.stale = true; emit(); }, 10000);
+    db.collection('data/users/' + uid).onSnapshot((snap) => {
+      for (const d of snap.docs) if (!dirty.has(d.id)) docs[d.id] = clone(d.data());
+      for (const ch of snap.docChanges()) if (ch.type === 'removed' && !dirty.has(ch.doc.id)) delete docs[ch.doc.id];
+      status.loaded = true;
+      if (!snap.metadata.fromCache) { status.confirmed = true; status.stale = false; clearTimeout(timer); }
+      if (!status.lastSaved) status.lastSaved = lastSavedFromDocs();
+      emit();
+    }, (e) => {
+      clearTimeout(timer);
+      status.error = 'Your saved data could not be loaded (' + e.code + '). Nothing has been changed. Reopen the app to try again.';
+      status.stale = true; emit();
+    });
+  }
+
+  function startLocal() {
+    status.mode = 'local';
+    const raw = lsGet(LOCAL_KEY);
+    if (raw) { try { Object.assign(docs, JSON.parse(raw).docs || {}); } catch (e) { status.error = 'The copy saved in this browser is damaged. Import a backup in Settings.'; } }
+    status.loaded = true; status.confirmed = true; status.lastSaved = lastSavedFromDocs();
+    emit();
+  }
+
+  async function setOnce(id, body) {
+    try { await db.doc('data/users/' + uid + '/' + id).set(body); }
+    catch (e) {
+      if (e && e.code === 'unavailable') { await new Promise((r) => setTimeout(r, 600 + Math.random() * 800)); await db.doc('data/users/' + uid + '/' + id).set(body); }
+      else throw e;
+    }
+  }
+
+  async function run(id) {
+    const q = queues[id]; q.running = true;
+    while (q.pending) {
+      const body = q.pending; q.pending = null;
+      const waiters = q.waiters; q.waiters = [];
+      status.saving++; emit();
+      try {
+        await setOnce(id, body);
+        status.lastSaved = new Date(); status.failedDocs = status.failedDocs.filter((x) => x !== id);
+        if (!status.failedDocs.length) status.error = null;
+        waiters.forEach((w) => w.res());
+      } catch (e) {
+        const code = (e && e.code) || 'unknown';
+        status.error = code === 'quota_exceeded' ? 'Storage is full. Export a backup, then remove old data.'
+          : code === 'invalid_argument' ? 'This account cannot write here (view-only access?). Changes stay on this screen only.'
+          : 'Last change was NOT saved (' + code + '). Tap Retry; a copy is kept in this browser meanwhile.';
+        if (!status.failedDocs.includes(id)) status.failedDocs.push(id);
+        waiters.forEach((w) => w.rej(e));
+      }
+      status.saving--; emit();
+    }
+    q.running = false;
+    if (!status.failedDocs.includes(id)) dirty.delete(id);
+  }
+
+  function write(id, data) {
+    const body = Object.assign({}, data, { savedAt: new Date().toISOString() });
+    docs[id] = body; dirty.add(id); mirror();
+    if (status.mode !== 'cloud') {
+      const ok = lsSet(LOCAL_KEY, JSON.stringify({ docs }));
+      if (ok) { status.lastSaved = new Date(); status.error = null; }
+      else status.error = 'This browser refused to save. Export a JSON backup now.';
+      dirty.delete(id); emit();
+      return ok ? Promise.resolve() : Promise.reject({ code: 'local_failed' });
+    }
+    emit();
+    const q = queues[id] || (queues[id] = { pending: null, running: false, waiters: [] });
+    q.pending = body;
+    const p = new Promise((res, rej) => q.waiters.push({ res, rej }));
+    if (!q.running) run(id);
+    return p;
+  }
+
+  function retry() { for (const id of status.failedDocs.slice()) write(id, docs[id]); }
+
+  function readMirror() { try { const m = JSON.parse(lsGet(MIRROR_KEY) || 'null'); return m && m.docs && m.docs.profile ? m : null; } catch (e) { return null; } }
+
+  return {
+    start, write, retry, readMirror, status,
+    subscribe(f) { listeners.add(f); return () => listeners.delete(f); },
+    get docs() { return docs; },
+  };
+}
+const store = createStore();
+
+function useStore() {
+  const [, force] = useState(0);
+  useEffect(() => store.subscribe(() => force((n) => n + 1)), []);
+  const profile = store.docs.profile || null;
+  const txs = [];
+  for (const [id, d] of Object.entries(store.docs)) if (id.startsWith('tx-') && d && Array.isArray(d.items)) txs.push(...d.items);
+  txs.sort((a, b) => b.date.localeCompare(a.date) || (b.createdAt || 0) - (a.createdAt || 0));
+  return { profile, txs, status: store.status };
+}
+
+/* Data actions — each one saves immediately. */
+const monthDoc = (mk) => store.docs['tx-' + mk] || { items: [] };
+function saveProfile(p) { return store.write('profile', p); }
+async function saveTx(t, profile) {
+  const mk = C.monthKey(t.date);
+  const old = findTx(t.id);
+  const writes = [];
+  if (old && C.monthKey(old.date) !== mk) {
+    const om = C.monthKey(old.date);
+    writes.push(store.write('tx-' + om, { items: monthDoc(om).items.filter((x) => x.id !== t.id) }));
+  }
+  const items = monthDoc(mk).items.filter((x) => x.id !== t.id).concat([t]);
+  writes.push(store.write('tx-' + mk, { items }));
+  // Shared bill: others' share becomes money owed to me.
+  if (profile) {
+    let lent = (profile.lent || []).slice();
+    const i = lent.findIndex((x) => x.txId === t.id);
+    if (C.num(t.othersOwe) > 0) {
+      const entry = Object.assign({ id: C.uid(), payments: [], expected: '' }, i >= 0 ? lent[i] : {}, { txId: t.id, person: t.owedBy || 'Friends', amount: C.num(t.othersOwe), date: t.date, notes: 'Share of ' + (t.name || t.category) });
+      if (i >= 0) lent[i] = entry; else lent.push(entry);
+      writes.push(saveProfile(Object.assign({}, profile, { lent })));
+    } else if (i >= 0 && !(lent[i].payments || []).length) {
+      lent.splice(i, 1); writes.push(saveProfile(Object.assign({}, profile, { lent })));
+    }
+  }
+  return Promise.all(writes);
+}
+function findTx(id) {
+  for (const [k, d] of Object.entries(store.docs)) if (k.startsWith('tx-') && d && d.items) { const t = d.items.find((x) => x.id === id); if (t) return t; }
+  return null;
+}
+function deleteTx(t, profile) {
+  const mk = C.monthKey(t.date);
+  const w = [store.write('tx-' + mk, { items: monthDoc(mk).items.filter((x) => x.id !== t.id) })];
+  if (profile) {
+    const lent = (profile.lent || []).filter((x) => !(x.txId === t.id && !(x.payments || []).length));
+    if (lent.length !== (profile.lent || []).length) w.push(saveProfile(Object.assign({}, profile, { lent })));
+  }
+  return Promise.all(w);
+}
+
+/* ===================== Small components ===================== */
+const ICONS = {
+  home: 'M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z',
+  list: 'M8 6h13M8 12h13M8 18h13M3.5 6h.01M3.5 12h.01M3.5 18h.01',
+  plus: 'M12 5v14M5 12h14',
+  budget: 'M12 3v9l7.8 4.5A9 9 0 1 1 12 3zM15 3.5a9 9 0 0 1 5.6 9',
+  health: 'M3 12h4l3-8 4 16 3-8h4',
+  spark: 'M12 3l1.9 5.6L19.5 10l-5.6 1.9L12 17.5l-1.9-5.6L4.5 10l5.6-1.4zM19 16l.8 2.2L22 19l-2.2.8L19 22l-.8-2.2L16 19l2.2-.8z',
+  gear: 'M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z',
+  x: 'M6 6l12 12M18 6L6 18',
+  search: 'M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14zM21 21l-4.3-4.3',
+  send: 'M5 12h14M13 6l6 6-6 6',
+};
+function Icon({ name }) {
+  return html`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d=${ICONS[name]} /></svg>`;
+}
+const fmt = C.fmt;
+const pct = (v) => v == null ? '—' : Math.round(v * 100) + '%';
+const shortDate = (s) => s ? C.parse(s).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : '—';
+const monthName = (mk, long) => C.parse(mk + '-01').toLocaleDateString('en-IN', { month: long ? 'long' : 'short', year: long ? 'numeric' : undefined });
+const initials = (s) => (s || '?').trim().split(/\s+/).slice(0, 2).map((w) => w[0]).join('').toUpperCase();
+
+function Sheet({ title, onClose, children, wide }) {
+  useEffect(() => {
+    const k = (e) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', k); return () => window.removeEventListener('keydown', k);
+  }, [onClose]);
+  return html`<div className="scrim" onClick=${(e) => { if (e.target === e.currentTarget) onClose(); }}>
+    <div className="sheet" role="dialog" aria-label=${title}>
+      <div className="grab"></div>
+      <div className="head"><h3>${title}</h3><button className="iconbtn" aria-label="Close" onClick=${onClose}><${Icon} name="x" /></button></div>
+      ${children}
+    </div></div>`;
+}
+
+function Field({ label, children }) { return html`<div className="field"><label>${label}</label>${children}</div>`; }
+function NumInput({ value, onChange, placeholder, id }) {
+  return html`<input id=${id} className="input num" inputMode="decimal" placeholder=${placeholder || '0'} value=${value === '' || value == null ? '' : value}
+    onChange=${(e) => { const v = e.target.value.replace(/[^\d.]/g, ''); onChange(v === '' ? '' : Number(v)); }} />`;
+}
+function Seg({ value, options, onChange }) {
+  return html`<div className="seg">${options.map((o) => html`<button key=${o.v} className=${value === o.v ? 'on' : ''} onClick=${() => onChange(o.v)}>${o.l}</button>`)}</div>`;
+}
+function Bar({ value, level }) {
+  const cls = level >= 100 ? 'bar bad' : level >= 75 ? 'bar warn' : 'bar';
+  return html`<div className=${cls}><i style=${{ width: Math.min(100, Math.max(0, (value || 0) * 100)) + '%' }}></i></div>`;
+}
+function Pill({ tone, children }) { return html`<span className=${'pill ' + (tone || '')}>${children}</span>`; }
+
+function useToast() {
+  const [msg, setMsg] = useState(null);
+  const t = useRef();
+  const show = useCallback((m) => { setMsg(m); clearTimeout(t.current); t.current = setTimeout(() => setMsg(null), 3200); }, []);
+  const el = msg ? html`<div className="toast" role="status">${msg}</div>` : null;
+  return [el, show];
+}
+
+function TxRow({ t, onClick }) {
+  const out = t.type === 'expense';
+  return html`<button className="tx" onClick=${onClick}>
+    <span className="ic">${initials(t.name || t.category)}</span>
+    <span className="grow" style=${{ minWidth: 0 }}>
+      <div className="ellipsis" style=${{ fontWeight: 600 }}>${t.name || t.category}</div>
+      <div className="small muted ellipsis">${t.category} · ${shortDate(t.date)} · ${t.method}${C.num(t.othersOwe) ? ' · ' + fmt(t.othersOwe) + ' owed to you' : ''}</div>
+    </span>
+    <span className=${'amt num' + (out ? '' : ' in')}>${out ? '−' : '+'}${fmt(t.amount).replace('−', '')}</span>
+  </button>`;
+}
+
+/* Generic editor for lists of records (loans, cards, assets, IOUs...). */
+function ItemsEditor({ items, setItems, schema, blank, addLabel }) {
+  const upd = (i, k, v) => setItems(items.map((x, j) => j === i ? Object.assign({}, x, { [k]: v }) : x));
+  return html`<div className="stack">
+    ${items.map((it, i) => html`<div className="item" key=${it.id || i}>
+      <div className="grid2">
+        ${schema.map((f) => html`<div className="field" key=${f.k} style=${{ gridColumn: f.full ? '1 / -1' : undefined }}>
+          <label htmlFor=${'f-' + (it.id || i) + '-' + f.k}>${f.l}</label>
+          ${f.t === 'number' ? html`<${NumInput} id=${'f-' + (it.id || i) + '-' + f.k} value=${it[f.k]} placeholder=${f.ph} onChange=${(v) => upd(i, f.k, v)} />`
+          : f.t === 'select' ? html`<select id=${'f-' + (it.id || i) + '-' + f.k} className="input" value=${it[f.k] || ''} onChange=${(e) => upd(i, f.k, e.target.value)}>${f.o.map((o) => html`<option key=${o} value=${o}>${o}</option>`)}</select>`
+          : f.t === 'check' ? html`<label className="row small"><input id=${'f-' + (it.id || i) + '-' + f.k} type="checkbox" checked=${!!it[f.k]} onChange=${(e) => upd(i, f.k, e.target.checked)} /> ${f.hint}</label>`
+          : html`<input id=${'f-' + (it.id || i) + '-' + f.k} className="input" type=${f.t === 'date' ? 'date' : 'text'} placeholder=${f.ph || ''} value=${it[f.k] || ''} onChange=${(e) => upd(i, f.k, e.target.value)} />`}
+        </div>`)}
+      </div>
+      <button className="link" style=${{ color: 'var(--bad)', alignSelf: 'flex-start' }} onClick=${() => setItems(items.filter((_, j) => j !== i))}>Remove</button>
+    </div>`)}
+    <button className="btn" onClick=${() => setItems(items.concat([Object.assign({ id: C.uid() }, blank())]))}>+ ${addLabel}</button>
+  </div>`;
+}
+
+function EditListSheet({ title, items, schema, blank, addLabel, onSave, onClose, note }) {
+  const [draft, setDraft] = useState(() => clone(items || []));
+  return html`<${Sheet} title=${title} onClose=${onClose}>
+    ${note ? html`<div className="small muted">${note}</div>` : null}
+    <${ItemsEditor} items=${draft} setItems=${setDraft} schema=${schema} blank=${blank} addLabel=${addLabel} />
+    <button className="btn primary block" onClick=${() => { onSave(draft); onClose(); }}>Save</button>
+  </${Sheet}>`;
+}
+
+const SCHEMAS = {
+  loans: [
+    { k: 'lender', l: 'Lender', t: 'text', full: true, ph: 'e.g. Bajaj Finance' },
+    { k: 'original', l: 'Original amount', t: 'number' }, { k: 'outstanding', l: 'Outstanding principal', t: 'number' },
+    { k: 'emi', l: 'Monthly EMI', t: 'number' }, { k: 'rate', l: 'Interest rate % p.a.', t: 'number' },
+    { k: 'remainingEmis', l: 'EMIs remaining', t: 'number' }, { k: 'nextDate', l: 'Next EMI date', t: 'date' },
+  ],
+  cards: [
+    { k: 'bank', l: 'Bank / card name', t: 'text', ph: 'HDFC Millennia' }, { k: 'method', l: 'Shows in Add as', t: 'select', o: C.CARD_METHODS },
+    { k: 'limit', l: 'Credit limit', t: 'number' }, { k: 'outstanding', l: 'Outstanding now', t: 'number' },
+    { k: 'statementDay', l: 'Statement day (1–31)', t: 'number' }, { k: 'dueDay', l: 'Payment due day (1–31)', t: 'number' },
+    { k: 'totalDue', l: 'Statement total due', t: 'number' }, { k: 'minDue', l: 'Minimum due', t: 'number' },
+  ],
+  assets: [
+    { k: 'type', l: 'Type', t: 'select', o: C.ASSET_TYPES }, { k: 'name', l: 'Name', t: 'text', ph: 'e.g. SBI savings' },
+    { k: 'invested', l: 'Amount invested', t: 'number' }, { k: 'current', l: 'Current value', t: 'number' },
+    { k: 'sip', l: 'Monthly SIP / deposit', t: 'number' },
+  ],
+  fixed: [
+    { k: 'name', l: 'Name', t: 'text', ph: 'Rent' }, { k: 'category', l: 'Category', t: 'select', o: C.DEFAULT_CATEGORIES },
+    { k: 'amount', l: 'Amount / month', t: 'number' }, { k: 'dueDay', l: 'Due day (1–31)', t: 'number' },
+  ],
+  goals: [
+    { k: 'name', l: 'Goal', t: 'text', full: true, ph: 'Savings goal' }, { k: 'target', l: 'Target', t: 'number' },
+    { k: 'saved', l: 'Saved so far', t: 'number' }, { k: 'monthly', l: 'Planned per month (optional)', t: 'number' },
+    { k: 'linkNetSavings', l: 'Progress source', t: 'check', hint: 'Use all savings & investments as progress' },
+  ],
+  lent: [
+    { k: 'person', l: 'Person', t: 'text' }, { k: 'amount', l: 'Amount lent', t: 'number' },
+    { k: 'date', l: 'Date lent', t: 'date' }, { k: 'expected', l: 'Expected back by', t: 'date' },
+    { k: 'notes', l: 'Notes', t: 'text', full: true },
+  ],
+  borrowed: [
+    { k: 'person', l: 'Person / institution', t: 'text' }, { k: 'amount', l: 'Amount owed', t: 'number' },
+    { k: 'date', l: 'Date borrowed', t: 'date' }, { k: 'due', l: 'Due date', t: 'date' },
+    { k: 'notes', l: 'Notes', t: 'text', full: true },
+  ],
+  planned: [{ k: 'name', l: 'What', t: 'text' }, { k: 'amount', l: 'Amount', t: 'number' }, { k: 'date', l: 'When', t: 'date' }],
+  sources: [{ k: 'name', l: 'Source', t: 'select', o: ['Other income', 'Freelance', 'Bonus', 'From friends', 'Rental', 'Interest'] }, { k: 'amount', l: 'Expected / month', t: 'number' }],
+};
+const BLANKS = {
+  loans: () => ({ lender: '', original: '', outstanding: '', emi: '', rate: '', remainingEmis: '', nextDate: '' }),
+  cards: () => ({ bank: '', method: 'HDFC Credit Card', limit: '', outstanding: '', statementDay: '', dueDay: '', totalDue: '', minDue: '' }),
+  assets: () => ({ type: 'Mutual funds', name: '', invested: '', current: '', sip: '' }),
+  fixed: () => ({ name: '', category: 'Bills & Utilities', amount: '', dueDay: '' }),
+  goals: () => ({ name: '', target: '', saved: '', monthly: '', linkNetSavings: false }),
+  lent: () => ({ person: '', amount: '', date: today(), expected: '', payments: [] }),
+  borrowed: () => ({ person: '', amount: '', date: '', due: '', payments: [] }),
+  planned: () => ({ name: '', amount: '', date: '' }),
+  sources: () => ({ name: 'Other income', amount: '' }),
+};
+
+/* Cards: the editor shows the live outstanding; a changed figure becomes the new baseline from now. */
+function cardsForEdit(cards, txs) { return (cards || []).map((c) => Object.assign({}, c, { outstanding: Math.round(C.cardOutstanding(c, txs)) })); }
+function cardsFromEdit(draft, cards, txs) {
+  return draft.map((d) => {
+    const old = (cards || []).find((c) => c.id === d.id);
+    if (old && Math.round(C.cardOutstanding(old, txs)) === C.num(d.outstanding)) return Object.assign({}, d, { outstanding: old.outstanding, asOf: old.asOf, asOfTs: old.asOfTs });
+    return Object.assign({}, d, { asOf: today(), asOfTs: Date.now() });
+  });
+}
+
+/* ===================== Charts (SVG, theme tokens) ===================== */
+function CashflowChart({ months, onPick, picked }) {
+  const W = 340, H = 170, top = 10, bottom = 22, left = 34;
+  const max = Math.max(1, ...months.map((m) => Math.max(m.income, m.spend)));
+  const nice = niceMax(max);
+  const gw = (W - left) / months.length, bw = Math.min(16, gw / 3);
+  const y = (v) => top + (H - top - bottom) * (1 - v / nice);
+  return html`<svg className="chart" viewBox=${'0 0 ' + W + ' ' + H} role="img" aria-label="Income versus spending by month">
+    ${[0, 0.5, 1].map((f) => html`<g key=${f}><line className="grid" x1=${left} x2=${W} y1=${y(nice * f)} y2=${y(nice * f)} /><text x=${left - 6} y=${y(nice * f) + 4} text-anchor="end">${C.fmtShort(nice * f).replace('₹', '')}</text></g>`)}
+    ${months.map((m, i) => {
+      const x = left + gw * i + gw / 2;
+      const on = picked === m.mk;
+      return html`<g key=${m.mk} onClick=${() => onPick && onPick(m.mk)} style=${{ cursor: 'pointer' }}>
+        <rect x=${left + gw * i} y=${top} width=${gw} height=${H - top - bottom} fill=${on ? 'var(--surface-2)' : 'transparent'} rx="6" />
+        <path d=${barPath(x - bw - 1, y(m.income), bw, y(0))} fill="var(--c-income)" />
+        <path d=${barPath(x + 1, y(m.spend), bw, y(0))} fill="var(--c-spend)" />
+        <text x=${x} y=${H - 6} text-anchor="middle" style=${{ fontWeight: on ? 700 : 400 }}>${monthName(m.mk)}</text>
+      </g>`;
+    })}
+  </svg>`;
+}
+function barPath(x, yTop, w, yBase) {
+  const h = Math.max(0, yBase - yTop); if (h < 0.5) return '';
+  const r = Math.min(4, w / 2, h);
+  return 'M' + x + ',' + yBase + 'V' + (yTop + r) + 'Q' + x + ',' + yTop + ' ' + (x + r) + ',' + yTop + 'H' + (x + w - r) + 'Q' + (x + w) + ',' + yTop + ' ' + (x + w) + ',' + (yTop + r) + 'V' + yBase + 'Z';
+}
+function niceMax(v) { const p = Math.pow(10, Math.floor(Math.log10(v))); for (const m of [1, 2, 2.5, 5, 10]) if (m * p >= v) return m * p; return 10 * p; }
+
+function DailyBars({ mk, txs }) {
+  const [pick, setPick] = useState(null);
+  const d0 = C.parse(mk + '-01'); const n = C.daysInMonth(d0.getFullYear(), d0.getMonth());
+  const vals = Array.from({ length: n }, (_, i) => C.sum(txs.filter((t) => C.isSpend(t) && t.date === mk + '-' + String(i + 1).padStart(2, '0')), C.myShare));
+  const W = 340, H = 120, top = 6, bottom = 18, left = 2;
+  const max = niceMax(Math.max(1, ...vals)); const gw = (W - left) / n; const bw = Math.max(2, gw - 3);
+  const y = (v) => top + (H - top - bottom) * (1 - v / max);
+  return html`<div className="stack" style=${{ gap: '6px' }}>
+    <div className="tip num">${pick != null ? shortDate(mk + '-' + String(pick + 1).padStart(2, '0')) + ': ' + fmt(vals[pick]) : 'Tap a day. Highest: ' + fmt(Math.max(...vals)) + ' · scale to ' + C.fmtShort(max)}</div>
+    <svg className="chart" viewBox=${'0 0 ' + W + ' ' + H} role="img" aria-label="Daily spending">
+      <line className="grid" x1="0" x2=${W} y1=${y(0)} y2=${y(0)} />
+      ${vals.map((v, i) => html`<g key=${i} onClick=${() => setPick(i)}>
+        <rect x=${left + gw * i} y=${top} width=${gw} height=${H - top - bottom} fill="transparent" />
+        <path d=${barPath(left + gw * i + (gw - bw) / 2, y(v), bw, y(0))} fill=${pick === i ? 'var(--fg)' : 'var(--accent)'} />
+      </g>`)}
+      ${[1, 8, 15, 22, n].map((d) => html`<text key=${d} x=${left + gw * (d - 1) + gw / 2} y=${H - 4} text-anchor="middle">${d}</text>`)}
+    </svg></div>`;
+}
+
+function TrendLine({ points }) {
+  const [pick, setPick] = useState(points.length - 1);
+  const W = 340, H = 130, top = 12, bottom = 22, left = 36;
+  const vals = points.map((p) => p.v);
+  const hi = Math.max(0, ...vals), lo = Math.min(0, ...vals); const span = (hi - lo) || 1;
+  const y = (v) => top + (H - top - bottom) * (1 - (v - lo) / span);
+  const x = (i) => left + (W - left - 10) * (points.length === 1 ? 0.5 : i / (points.length - 1));
+  const d = points.map((p, i) => (i ? 'L' : 'M') + x(i) + ',' + y(p.v)).join('');
+  const p = points[pick];
+  return html`<div className="stack" style=${{ gap: '6px' }}>
+    <div className="tip num">${p ? monthName(p.mk, true) + ': ' + fmt(p.v, { sign: true }) + (p.rate != null ? ' (' + pct(p.rate) + ' of income)' : '') : ''}</div>
+    <svg className="chart" viewBox=${'0 0 ' + W + ' ' + H} role="img" aria-label="Net savings by month">
+      <line className="grid" x1=${left} x2=${W} y1=${y(0)} y2=${y(0)} /><text x=${left - 6} y=${y(0) + 4} text-anchor="end">0</text>
+      <text x=${left - 6} y=${y(hi) + 4} text-anchor="end">${C.fmtShort(hi).replace('₹', '')}</text>
+      ${lo < 0 ? html`<text x=${left - 6} y=${y(lo) + 4} text-anchor="end">${C.fmtShort(lo).replace('₹', '')}</text>` : null}
+      <path d=${d} fill="none" stroke="var(--accent)" stroke-width="2" stroke-linejoin="round" />
+      ${points.map((pt, i) => html`<g key=${pt.mk} onClick=${() => setPick(i)} style=${{ cursor: 'pointer' }}>
+        <rect x=${x(i) - 20} y=${top} width="40" height=${H - top - bottom} fill="transparent" />
+        <circle cx=${x(i)} cy=${y(pt.v)} r=${i === pick ? 5 : 4} fill=${pt.v < 0 ? 'var(--bad)' : 'var(--accent)'} stroke="var(--surface)" stroke-width="2" />
+        <text x=${x(i)} y=${H - 5} text-anchor="middle">${monthName(pt.mk)}</text>
+      </g>`)}
+    </svg></div>`;
+}
+
+function HBars({ rows, total, limit, empty }) {
+  const list = rows.slice(0, limit || 8); const max = Math.max(1, ...list.map((r) => r.v));
+  if (!list.length) return html`<div className="empty">${empty || 'Nothing recorded yet.'}</div>`;
+  return html`<div className="stack">${list.map((r) => html`<div key=${r.k} className="stack" style=${{ gap: '5px' }}>
+    <div className="row small"><span className="grow ellipsis" style=${{ fontWeight: 600 }}>${r.k}</span><span className="num">${fmt(r.v)}</span><span className="muted num" style=${{ width: '38px', textAlign: 'right' }}>${total ? Math.round(r.v / total * 100) + '%' : ''}</span></div>
+    <div className="bar"><i style=${{ width: (r.v / max * 100) + '%' }}></i></div>
+  </div>`)}</div>`;
+}
+/* Finance OS — screens, add sheet, adviser, settings, setup, boot. */
+
+function allCategories(p) { return C.DEFAULT_CATEGORIES.concat((p && p.customCategories) || []); }
+function monthsWithData(txs) {
+  const set = new Set(txs.map((t) => C.monthKey(t.date))); set.add(C.monthKey(today()));
+  return [...set].sort().reverse();
+}
+function healthScore(p, txs, d) {
+  const mk = C.monthKey(d); const prev = C.monthSummary(txs, C.shiftMonthKey(mk, -1)); const cur = C.monthSummary(txs, mk);
+  const nw = C.netWorth(p, txs); const inc = C.num(p.income && p.income.salary) + C.sum((p.income && p.income.sources) || [], (s) => s.amount);
+  const base = prev.income > 0 ? prev : cur;
+  const parts = [];
+  const sr = base.savingsRate; parts.push({ k: 'Savings rate', got: sr == null ? null : Math.round(Math.max(0, Math.min(1, sr / 0.3)) * 30), of: 30, note: sr == null ? 'record income to score' : pct(sr) + ' (30%+ is full marks)' });
+  const need = Math.max(base.spend, C.sum(p.fixed || [], (f) => f.amount) + nw.emiTotal);
+  const em = need > 0 ? nw.emergency / need : null; parts.push({ k: 'Emergency fund', got: em == null ? null : Math.round(Math.min(1, em / 6) * 25), of: 25, note: em == null ? 'add expenses to score' : em.toFixed(1) + ' months (6 is full marks)' });
+  const dti = inc > 0 ? nw.emiTotal / inc : null; parts.push({ k: 'EMI load', got: dti == null ? null : Math.round(Math.max(0, Math.min(1, (0.4 - dti) / 0.3)) * 20), of: 20, note: dti == null ? 'set salary to score' : pct(dti) + ' of income on EMIs (10% or less is full marks)' });
+  const lim = C.sum(p.cards || [], (c) => c.limit); const util = lim > 0 ? nw.cardDebt / lim : null;
+  parts.push({ k: 'Card use', got: util == null ? (p.cards || []).length ? null : 15 : Math.round(Math.max(0, Math.min(1, (0.9 - util) / 0.6)) * 15), of: 15, note: util == null ? (p.cards || []).length ? 'add card limits to score' : 'no cards' : pct(util) + ' of limits (30% or less is full marks)' });
+  const b = C.budgetStatus(p, txs, mk); const over = b.rows.filter((r) => r.pct >= 1).length;
+  parts.push({ k: 'Budgets', got: b.rows.length ? Math.round(10 * (1 - over / b.rows.length)) : null, of: 10, note: b.rows.length ? over + ' of ' + b.rows.length + ' over budget' : 'set budgets to score' });
+  const scored = parts.filter((x) => x.got != null);
+  const score = scored.length ? Math.round(C.sum(scored, (x) => x.got) / C.sum(scored, (x) => x.of) * 100) : null;
+  return { score, parts };
+}
+
+/* ===================== Home ===================== */
+function Home({ p, txs, go, openAdd, openTx, openSettings, status }) {
+  const d = today(); const mk = C.monthKey(d);
+  const st = useMemo(() => C.safeToSpend(p, txs, d), [p, txs]);
+  const cur = C.monthSummary(txs, mk); const nw = C.netWorth(p, txs); const b = C.budgetStatus(p, txs, mk);
+  const [showBreak, setShowBreak] = useState(false);
+  const [picked, setPicked] = useState(mk);
+  const months = [-5, -4, -3, -2, -1, 0].map((i) => C.monthSummary(txs, C.shiftMonthKey(mk, i)));
+  const pm = months.find((m) => m.mk === picked) || months[5];
+  const upcoming = C.obligations(p, txs, d, C.addDays(d, 31));
+  const hs = healthScore(p, txs, d);
+  const expected = C.num(p.income.salary) + C.sum(p.income.sources || [], (s) => s.amount);
+  const cats = C.byKey(C.monthTx(txs, mk).filter(C.isSpend), (t) => t.category, C.myShare);
+  const hour = new Date().getHours();
+  return html`<div className="screen">
+    <div className="topbar"><div className="grow"><h1>${hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening'}</h1><div className="sub">${new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' })} · <${SaveChip} status=${status} /></div></div>
+      <button className="iconbtn" aria-label="Settings" onClick=${openSettings}><${Icon} name="gear" /></button></div>
+
+    <section className=${'hero' + (st.shortfall > 0 ? ' short' : '')} aria-label="Safe to spend">
+      <div className="label">Safe to spend</div>
+      ${st.safe == null ? html`<div className="big">—</div><div className="meta">Add your current bank balance to calculate this.</div>
+        <button className="btn" style=${{ alignSelf: 'flex-start', marginTop: '6px' }} onClick=${openSettings}>Update bank balance</button>`
+      : html`<div className="big num">${fmt(st.safe)}</div>
+        <div className="meta num">${st.shortfall > 0 ? 'Short by ' + fmt(st.shortfall) + ' for what is due before payday' : 'About ' + fmt(st.perDay) + '/day for ' + st.days + ' days, until payday ' + shortDate(st.payday)}</div>
+        <button className="link" style=${{ alignSelf: 'flex-start', marginTop: '4px' }} onClick=${() => setShowBreak(!showBreak)}>${showBreak ? 'Hide' : 'How this is worked out'}</button>
+        ${showBreak ? html`<div className="break num">
+          <span>Bank balance (estimated)</span><span>${fmt(st.bank)}</span>
+          ${st.obligations.map((o, i) => html`<${React.Fragment} key=${i}><span>− ${o.kind}: ${o.name} · ${shortDate(o.date)}</span><span>${fmt(o.amount)}</span></${React.Fragment}>`)}
+          ${st.savings ? html`<span>− Savings still to set aside</span><span>${fmt(st.savings)}</span>` : null}
+          ${st.cushion ? html`<span>− Safety cushion</span><span>${fmt(st.cushion)}</span>` : null}
+          <span style=${{ fontWeight: 700 }}>Safe to spend</span><span style=${{ fontWeight: 700 }}>${fmt(st.safe)}</span>
+          <span style=${{ gridColumn: '1 / -1', opacity: .8, fontSize: '12px' }}>Balance last entered ${shortDate(p.bank.asOf)}, then adjusted by everything recorded since. Card purchases count when you pay the bill.</span>
+        </div>` : null}`}
+    </section>
+    ${st.missing.length ? html`<div className="banner warn">Missing: ${st.missing.join(', ')}. Figures that depend on it are left blank.</div>` : null}
+
+    <div className="grid2">
+      <button className="stat" onClick=${() => go('budgets')}><span className="k">Budget left</span><span className="v num">${b.total ? fmt(b.left) : '—'}</span><span className="s">${b.total ? pct(b.pct) + ' of ' + fmt(b.total) + ' used' : 'No budgets set'}</span></button>
+      <button className="stat" onClick=${() => go('activity')}><span className="k">Spent in ${monthName(mk)}</span><span className="v num">${fmt(cur.spend)}</span><span className="s">Income ${fmt(cur.income)}${cur.income ? '' : ' (expected ' + fmt(expected) + ')'}</span></button>
+      <div className="stat"><span className="k">Left this month</span><span className="v num">${fmt((cur.income || expected) - cur.spend)}</span><span className="s">${cur.income ? 'Income' : 'Expected income'} − spending</span></div>
+      <div className="stat"><span className="k">Savings rate</span><span className="v num">${pct(cur.savingsRate)}</span><span className="s">${cur.income ? 'Of income received' : 'Record income to see'}</span></div>
+    </div>
+
+    <div className="card">
+      <h2>Upcoming bills & EMIs<span className="spacer"></span><span className="num" style=${{ textTransform: 'none', color: 'var(--fg)' }}>${fmt(C.sum(upcoming, (o) => o.amount))}</span></h2>
+      ${upcoming.length ? upcoming.slice(0, 6).map((o, i) => html`<div className="row" key=${i} style=${{ padding: '7px 0' }}>
+        <${Pill} tone=${o.overdue ? 'bad' : C.daysBetween(d, o.date) <= 3 ? 'warn' : ''}>${o.overdue ? 'Overdue' : shortDate(o.date)}</${Pill}>
+        <span className="grow ellipsis">${o.name} <span className="muted small">${o.kind}</span></span><span className="num" style=${{ fontWeight: 600 }}>${fmt(o.amount)}</span></div>`)
+      : html`<div className="empty">Nothing due in the next 31 days.</div>`}
+    </div>
+
+    <div className="card">
+      <h2>Recent<span className="spacer"></span><button className="link" onClick=${() => go('activity')}>See all</button></h2>
+      ${txs.length ? txs.slice(0, 6).map((t) => html`<${TxRow} key=${t.id} t=${t} onClick=${() => openTx(t)} />`)
+      : html`<div className="empty">No transactions yet.<br/><button className="btn primary" style=${{ marginTop: '10px' }} onClick=${openAdd}>Add your first one</button></div>`}
+    </div>
+
+    <button className="card" style=${{ border: 0, textAlign: 'left' }} onClick=${() => go('health')}>
+      <h2>Financial health</h2>
+      <div className="row"><span style=${{ fontFamily: 'var(--font-display)', fontSize: '38px', fontWeight: 700 }} className="num">${hs.score == null ? '—' : hs.score}</span><span className="muted">/100</span>
+        <span className="grow"></span>
+        <div className="stack" style=${{ gap: '2px', textAlign: 'right' }}><span className="small muted">Net worth</span><span className="num" style=${{ fontWeight: 700 }}>${fmt(nw.net)}</span></div></div>
+      <div className="grid3" style=${{ marginTop: '12px' }}>
+        <div><div className="small muted">Savings</div><div className="num" style=${{ fontWeight: 600 }}>${fmt(nw.savings + Math.max(0, nw.bank))}</div></div>
+        <div><div className="small muted">Debt</div><div className="num" style=${{ fontWeight: 600 }}>${fmt(nw.liabilities)}</div></div>
+        <div><div className="small muted">Cards owed</div><div className="num" style=${{ fontWeight: 600 }}>${fmt(nw.cardDebt)}</div></div>
+        <div><div className="small muted">EMIs / month</div><div className="num" style=${{ fontWeight: 600 }}>${fmt(nw.emiTotal)}</div></div>
+        <div><div className="small muted">Invested</div><div className="num" style=${{ fontWeight: 600 }}>${fmt(nw.assetValue - nw.savings)}</div></div>
+        <div><div className="small muted">Owed to you</div><div className="num" style=${{ fontWeight: 600 }}>${fmt(nw.receivable)}</div></div>
+      </div>
+    </button>
+
+    <div className="card">
+      <h2>Cash flow</h2>
+      <div className="legend"><span><i style=${{ background: 'var(--c-income)' }}></i>Income</span><span><i style=${{ background: 'var(--c-spend)' }}></i>Spending</span></div>
+      <${CashflowChart} months=${months} picked=${picked} onPick=${setPicked} />
+      <div className="tip num">${monthName(pm.mk, true)}: income ${fmt(pm.income)}, spending ${fmt(pm.spend)}, net ${fmt(pm.net, { sign: true })}</div>
+    </div>
+
+    <div className="card"><h2>Where it went · ${monthName(mk)}</h2><${HBars} rows=${cats} total=${cur.spend} limit=${6} empty="No spending this month yet." /></div>
+  </div>`;
+}
+
+function SaveChip({ status }) {
+  if (status.mode === 'starting') return html`<span className="savechip">Connecting…</span>`;
+  if (status.error) return html`<span className="savechip err">Not saved</span>`;
+  if (status.saving) return html`<span className="savechip">Saving…</span>`;
+  const t = status.lastSaved;
+  const where = status.mode === 'cloud' ? 'Saved' : 'Saved on this device';
+  return html`<span className="savechip">${t ? where + ' ' + t.toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit' }) : status.mode === 'cloud' ? 'Synced' : 'This device only'}</span>`;
+}
+
+/* ===================== Add / edit transaction ===================== */
+function AddSheet({ p, txs, initial, onClose, toast }) {
+  const editing = !!(initial && initial.id);
+  const lastMethod = lsGet('financeos.lastMethod') || 'UPI';
+  const [t, setT] = useState(() => Object.assign({ type: 'expense', amount: '', name: '', category: '', date: today(), method: lastMethod, notes: '', othersOwe: '', owedBy: '', cardId: '' }, initial || {}));
+  const [touchedCat, setTouchedCat] = useState(editing || !!(initial && initial.category));
+  const [more, setMore] = useState(!!(initial && (initial.notes || initial.othersOwe)));
+  const [dup, setDup] = useState(null);
+  const [confirmDel, setConfirmDel] = useState(false);
+  const [newCat, setNewCat] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const amtRef = useRef();
+  useEffect(() => { if (!editing && amtRef.current) amtRef.current.focus(); }, []);
+  const set = (k, v) => { setT((o) => Object.assign({}, o, { [k]: v })); setDup(null); };
+
+  const expenseCats = useMemo(() => {
+    const freq = C.byKey(txs.filter((x) => x.type === 'expense'), (x) => x.category, () => 1).map((x) => x.k);
+    return [...new Set(freq.concat(allCategories(p)))].filter((c) => allCategories(p).includes(c));
+  }, [txs.length, p.customCategories]);
+  const cats = t.type === 'income' ? C.INCOME_CATEGORIES : expenseCats;
+  const names = useMemo(() => [...new Set(txs.slice(0, 300).map((x) => x.name).filter(Boolean))], [txs.length]);
+  const onName = (v) => {
+    set('name', v);
+    const prev = txs.find((x) => (x.name || '').toLowerCase() === v.trim().toLowerCase());
+    if (prev && !touchedCat) setT((o) => Object.assign({}, o, { name: v, category: prev.category, method: prev.method, type: prev.type, cardId: prev.cardId || '' }));
+  };
+  const isCardPay = t.type === 'expense' && t.category === C.CARD_PAYMENT;
+  const cardsForMethod = (p.cards || []).filter((c) => c.method === t.method);
+  const showCardPick = isCardPay ? (p.cards || []).length > 0 : C.isCardMethod(t.method) && (p.cards || []).length > 0;
+  const cardChoices = isCardPay ? (p.cards || []) : (cardsForMethod.length ? cardsForMethod : (p.cards || []));
+  const cardId = showCardPick ? (cardChoices.some((c) => c.id === t.cardId) ? t.cardId : (cardChoices[0] && cardChoices[0].id) || '') : '';
+
+  async function save(force) {
+    const amount = C.num(t.amount);
+    if (!(amount > 0)) { toast('Enter an amount'); return; }
+    const category = t.category || (t.type === 'income' ? 'Other income' : 'Other');
+    const rec = Object.assign({}, t, { amount, category, name: t.name.trim(), cardId: cardId || '', othersOwe: C.num(t.othersOwe) || '', id: t.id || C.uid(), createdAt: t.createdAt || Date.now() });
+    if (rec.type === 'income') { rec.othersOwe = ''; rec.owedBy = ''; }
+    if (!force) { const d = C.findDuplicate(txs, rec); if (d) { setDup(d); return; } }
+    const mk = C.monthKey(rec.date);
+    const before = C.budgetStatus(p, txs, mk).rows.find((r) => r.cat === rec.category);
+    setBusy(true);
+    lsSet('financeos.lastMethod', rec.method);
+    try {
+      await saveTx(rec, p);
+      const after = C.budgetStatus(p, txs.filter((x) => x.id !== rec.id).concat([rec]), mk).rows.find((r) => r.cat === rec.category);
+      if (after && after.level > (before ? before.level : 0)) toast(after.level >= 100 ? '⚠ ' + rec.category + ' is over budget (' + pct(after.pct) + ')' : rec.category + ' budget at ' + pct(after.pct));
+      else toast((editing ? 'Updated · ' : 'Saved · ') + fmt(amount) + (rec.name ? ' ' + rec.name : ''));
+      onClose();
+    } catch (e) { toast('Not saved: ' + ((e && e.code) || 'error') + '. Kept on screen; tap Retry in Settings.'); setBusy(false); onClose(); }
+  }
+  async function del() {
+    setBusy(true);
+    try { await deleteTx(t, p); toast('Deleted'); } catch (e) { toast('Delete not saved: ' + ((e && e.code) || 'error')); }
+    onClose();
+  }
+  async function addCategory() {
+    const name = (newCat || '').trim(); if (!name) return;
+    if (!allCategories(p).includes(name)) await saveProfile(Object.assign({}, p, { customCategories: (p.customCategories || []).concat([name]) }));
+    set('category', name); setTouchedCat(true); setNewCat(null);
+  }
+
+  return html`<${Sheet} title=${editing ? 'Edit transaction' : 'Add transaction'} onClose=${onClose}>
+    <${Seg} value=${t.type} onChange=${(v) => { set('type', v); set('category', ''); setTouchedCat(false); }} options=${[{ v: 'expense', l: 'Expense' }, { v: 'income', l: 'Income' }]} />
+    <label className="amount-in" htmlFor="tx-amount"><span>₹</span><input id="tx-amount" ref=${amtRef} inputMode="decimal" placeholder="0" className="num" value=${t.amount} onChange=${(e) => set('amount', e.target.value.replace(/[^\d.]/g, ''))} onKeyDown=${(e) => { if (e.key === 'Enter') save(false); }} /></label>
+    <${Field} label=${t.type === 'income' ? 'From' : 'Paid to (merchant or person)'}>
+      <input id="tx-name" className="input" list="names" autoComplete="off" placeholder=${t.type === 'income' ? 'Employer, client, friend…' : 'Swiggy, landlord, Rahul…'} value=${t.name} onChange=${(e) => onName(e.target.value)} />
+      <datalist id="names">${names.map((n) => html`<option key=${n} value=${n} />`)}</datalist>
+    </${Field}>
+    <div className="field"><span className="lbl">Category</span>
+      <div className="chips wrap">${cats.map((c) => html`<button key=${c} className=${'chip' + (t.category === c ? ' on' : '')} onClick=${() => { set('category', c); setTouchedCat(true); }}>${c}</button>`)}
+        ${t.type === 'expense' ? (newCat == null ? html`<button className="chip" onClick=${() => setNewCat('')}>+ New</button>`
+          : html`<span className="row" style=${{ flexBasis: '100%' }}><input id="tx-newcat" className="input grow" placeholder="New category name" value=${newCat} onChange=${(e) => setNewCat(e.target.value)} /><button className="btn sm primary" onClick=${addCategory}>Add</button></span>`) : null}
+      </div></div>
+    <div className="field"><span className="lbl">Paid with</span>
+      <div className="chips">${C.METHODS.map((m) => html`<button key=${m} className=${'chip' + (t.method === m ? ' on' : '')} onClick=${() => set('method', m)}>${m}</button>`)}</div></div>
+    ${showCardPick && cardChoices.length > 1 || isCardPay ? html`<${Field} label=${isCardPay ? 'Paying which card?' : 'Which card?'}>
+      <select id="tx-card" className="input" value=${cardId} onChange=${(e) => set('cardId', e.target.value)}>${cardChoices.map((c) => html`<option key=${c.id} value=${c.id}>${c.bank}</option>`)}</select></${Field}>` : null}
+    ${isCardPay && !(p.cards || []).length ? html`<div className="banner warn small">Add the card under Health → Debts so this payment reduces its balance.</div>` : null}
+    ${isCardPay ? html`<div className="small muted">Bill payments reduce what you owe on the card. They are not counted as spending, because the purchases already were.</div>` : null}
+    ${C.isCardMethod(t.method) && !isCardPay && t.type === 'expense' ? html`<div className="small muted">Counts as spending now; leaves your bank account when you pay the card bill.</div>` : null}
+    <div className="grid2">
+      <${Field} label="Date"><input id="tx-date" className="input" type="date" value=${t.date} onChange=${(e) => set('date', e.target.value)} /></${Field}>
+      <div className="field"><span className="lbl">Quick</span><div className="row"><button className="chip" onClick=${() => set('date', today())}>Today</button><button className="chip" onClick=${() => set('date', C.addDays(today(), -1))}>Yesterday</button></div></div>
+    </div>
+    ${more ? html`<div className="stack">
+      <${Field} label="Notes"><textarea id="tx-notes" className="input" value=${t.notes} onChange=${(e) => set('notes', e.target.value)}></textarea></${Field}>
+      ${t.type === 'expense' ? html`<div className="grid2">
+        <${Field} label="Others owe me (shared bill)"><${NumInput} id="tx-owe" value=${t.othersOwe} onChange=${(v) => set('othersOwe', v)} /></${Field}>
+        <${Field} label="Who owes it"><input id="tx-owedby" className="input" value=${t.owedBy} placeholder="Name" onChange=${(e) => set('owedBy', e.target.value)} /></${Field}>
+      </div><div className="small muted">Only your share counts as spending; the rest is added to Money owed to me.</div>` : null}
+    </div>` : html`<button className="link" style=${{ alignSelf: 'flex-start' }} onClick=${() => setMore(true)}>+ Notes or split with friends</button>`}
+    ${dup ? html`<div className="banner warn"><div className="grow">This looks like a duplicate of ${dup.name || dup.category} · ${fmt(dup.amount)} on ${shortDate(dup.date)}.</div><button className="btn sm" onClick=${() => save(true)}>Save anyway</button></div>` : null}
+    <button className="btn primary block" disabled=${busy} onClick=${() => save(false)}>${editing ? 'Save changes' : 'Save'}</button>
+    ${editing ? (confirmDel ? html`<div className="row"><span className="grow small">Delete this transaction?</span><button className="btn sm" onClick=${() => setConfirmDel(false)}>Keep</button><button className="btn sm danger" onClick=${del}>Delete</button></div>`
+      : html`<button className="btn danger block" onClick=${() => setConfirmDel(true)}>Delete</button>`) : null}
+  </${Sheet}>`;
+}
+
+/* ===================== Activity (transactions + analytics) ===================== */
+function Activity({ p, txs, openTx, toast }) {
+  const [tab, setTab] = useState('list');
+  const [q, setQ] = useState('');
+  const [mk, setMk] = useState(C.monthKey(today()));
+  const [cat, setCat] = useState('');
+  const [method, setMethod] = useState('');
+  const months = monthsWithData(txs);
+  const filtered = txs.filter((t) => (!mk || C.monthKey(t.date) === mk) && (!cat || t.category === cat) && (!method || t.method === method) &&
+    (!q || [t.name, t.category, t.notes, t.date, shortDate(t.date), String(t.amount)].join(' ').toLowerCase().includes(q.toLowerCase())));
+  const groups = []; for (const t of filtered) { const g = groups[groups.length - 1]; if (g && g.date === t.date) g.items.push(t); else groups.push({ date: t.date, items: [t] }); }
+  const outT = C.sum(filtered.filter(C.isSpend), C.myShare), inT = C.sum(filtered.filter((t) => t.type === 'income'), (t) => t.amount);
+  async function exportCSV() {
+    const dl = await useCap('downloads');
+    if (!dl) { toast('Downloads are not available here'); return; }
+    try { await dl.save({ filename: 'transactions' + (mk ? '-' + mk : '') + '.csv', data: C.toCSV(filtered) }); toast('CSV exported'); } catch (e) { if (e.code !== 'declined') toast('Export failed: ' + e.code); }
+  }
+  return html`<div className="screen">
+    <div className="topbar"><h1>Activity</h1></div>
+    <${Seg} value=${tab} onChange=${setTab} options=${[{ v: 'list', l: 'Transactions' }, { v: 'insights', l: 'Analytics' }]} />
+    <div className="row">
+      <select id="act-month" className="input" style=${{ flex: 1 }} value=${mk} onChange=${(e) => setMk(e.target.value)}>
+        ${tab === 'list' ? html`<option value="">All months</option>` : null}
+        ${months.map((m) => html`<option key=${m} value=${m}>${monthName(m, true)}</option>`)}</select>
+    </div>
+    ${tab === 'list' ? html`<${React.Fragment}>
+      <div className="row"><input id="act-q" className="input" type="search" placeholder="Search name, category, date, amount" value=${q} onChange=${(e) => setQ(e.target.value)} /></div>
+      <div className="grid2">
+        <select id="act-cat" className="input" value=${cat} onChange=${(e) => setCat(e.target.value)}><option value="">All categories</option>${allCategories(p).concat(C.INCOME_CATEGORIES).map((c) => html`<option key=${c} value=${c}>${c}</option>`)}</select>
+        <select id="act-method" className="input" value=${method} onChange=${(e) => setMethod(e.target.value)}><option value="">All methods</option>${C.METHODS.map((c) => html`<option key=${c} value=${c}>${c}</option>`)}</select>
+      </div>
+      <div className="row small"><span className="grow muted">${filtered.length} transactions · spent ${fmt(outT)} · in ${fmt(inT)}</span><button className="link" onClick=${exportCSV}>Export CSV</button></div>
+      <div className="card" style=${{ paddingBlock: '6px' }}>
+        ${groups.length ? groups.map((g) => html`<div key=${g.date}>
+          <div className="daylabel"><span>${C.parse(g.date).toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' })}</span><span className="num">${fmt(C.sum(g.items.filter(C.isSpend), C.myShare))}</span></div>
+          ${g.items.map((t) => html`<${TxRow} key=${t.id} t=${t} onClick=${() => openTx(t)} />`)}</div>`)
+        : html`<div className="empty">No transactions match.</div>`}
+      </div></${React.Fragment}>`
+    : html`<${Analytics} p=${p} txs=${txs} mk=${mk || C.monthKey(today())} />`}
+  </div>`;
+}
+
+function Analytics({ p, txs, mk }) {
+  const list = C.monthTx(txs, mk); const spend = list.filter(C.isSpend);
+  const m = C.monthSummary(txs, mk); const prev = C.monthSummary(txs, C.shiftMonthKey(mk, -1));
+  const cats = C.byKey(spend, (t) => t.category, C.myShare);
+  const prevCats = new Map(C.byKey(C.monthTx(txs, C.shiftMonthKey(mk, -1)).filter(C.isSpend), (t) => t.category, C.myShare).map((x) => [x.k, x.v]));
+  const merchants = C.byKey(spend.filter((t) => t.name), (t) => t.name.trim(), C.myShare);
+  const methods = C.byKey(list.filter((t) => t.type === 'expense'), (t) => t.method, (t) => t.amount);
+  const weeks = [1, 8, 15, 22, 29].map((d0, i) => ({ k: 'Week ' + (i + 1) + ' (' + d0 + '–' + Math.min(d0 + 6, C.daysInMonth(C.parse(mk + '-01').getFullYear(), C.parse(mk + '-01').getMonth())) + ')', v: C.sum(spend.filter((t) => { const d = C.parse(t.date).getDate(); return d >= d0 && d < d0 + 7; }), C.myShare) })).filter((w, i) => i < 4 || w.v > 0);
+  const six = [-5, -4, -3, -2, -1, 0].map((i) => C.monthSummary(txs, C.shiftMonthKey(mk, i)));
+  const [picked, setPicked] = useState(mk);
+  const pm = six.find((x) => x.mk === picked) || six[5];
+  const delta = prev.spend ? (m.spend - prev.spend) / prev.spend : null;
+  return html`<${React.Fragment}>
+    <div className="grid3">
+      <div className="stat"><span className="k">Spent</span><span className="v num">${C.fmtShort(m.spend)}</span><span className="s">${delta == null ? '—' : (delta >= 0 ? '▲ ' : '▼ ') + Math.abs(Math.round(delta * 100)) + '% vs prev'}</span></div>
+      <div className="stat"><span className="k">Income</span><span className="v num">${C.fmtShort(m.income)}</span><span className="s">${m.count} transactions</span></div>
+      <div className="stat"><span className="k">Saved</span><span className="v num">${pct(m.savingsRate)}</span><span className="s num">${fmt(m.net)}</span></div>
+    </div>
+    <div className="card"><h2>Daily spending</h2><${DailyBars} mk=${mk} txs=${txs} /></div>
+    <div className="card"><h2>Weekly spending</h2><${HBars} rows=${weeks} total=${m.spend} /></div>
+    <div className="card"><h2>By category · vs last month</h2>
+      ${cats.length ? html`<div className="stack">${cats.map((c) => { const pv = prevCats.get(c.k) || 0; const ch = pv ? (c.v - pv) / pv : null; return html`<div key=${c.k} className="stack" style=${{ gap: '5px' }}>
+        <div className="row small"><span className="grow ellipsis" style=${{ fontWeight: 600 }}>${c.k}</span><span className="num">${fmt(c.v)}</span>
+          <span className=${'num ' + (ch == null ? 'muted' : '')} style=${{ width: '64px', textAlign: 'right', color: ch == null ? undefined : ch > 0.1 ? 'var(--bad)' : ch < -0.1 ? 'var(--good)' : 'var(--fg-3)' }}>${ch == null ? 'new' : (ch >= 0 ? '+' : '') + Math.round(ch * 100) + '%'}</span></div>
+        <div className="bar"><i style=${{ width: (c.v / cats[0].v * 100) + '%' }}></i></div></div>`; })}</div>` : html`<div className="empty">No spending in ${monthName(mk, true)}.</div>`}
+    </div>
+    <div className="card"><h2>Top merchants & people</h2><${HBars} rows=${merchants} total=${m.spend} limit=${8} /></div>
+    <div className="card"><h2>Payment methods</h2><${HBars} rows=${methods} total=${C.sum(methods, (x) => x.v)} /><div className="small muted" style=${{ marginTop: '8px' }}>Includes card-bill payments and investments, so the total can exceed spending.</div></div>
+    <div className="card"><h2>Income vs spending · 6 months</h2>
+      <div className="legend"><span><i style=${{ background: 'var(--c-income)' }}></i>Income</span><span><i style=${{ background: 'var(--c-spend)' }}></i>Spending</span></div>
+      <${CashflowChart} months=${six} picked=${picked} onPick=${setPicked} />
+      <div className="tip num">${monthName(pm.mk, true)}: income ${fmt(pm.income)}, spending ${fmt(pm.spend)}</div></div>
+    <div className="card"><h2>Savings trend</h2><${TrendLine} points=${six.map((x) => ({ mk: x.mk, v: x.net, rate: x.savingsRate }))} />
+      <div className="small muted">Net savings = income − spending. Investments count as saved, not spent.</div></div>
+  </${React.Fragment}>`;
+}
+
+/* ===================== Budgets & income ===================== */
+function Budgets({ p, txs, toast }) {
+  const [mk, setMk] = useState(C.monthKey(today()));
+  const [edit, setEdit] = useState(null);
+  const [draft, setDraft] = useState({});
+  const b = C.budgetStatus(p, txs, mk); const prevB = C.budgetStatus(p, txs, C.shiftMonthKey(mk, -1));
+  const spendCats = allCategories(p).filter((c) => c !== C.CARD_PAYMENT && c !== C.INVESTMENT);
+  const inc = p.income || {};
+  const expected = C.num(inc.salary) + C.sum(inc.sources || [], (s) => s.amount);
+  const fixedTotal = C.sum(p.fixed || [], (f) => f.amount);
+  const nw = C.netWorth(p, txs);
+  const save = (patch, msg) => saveProfile(Object.assign({}, p, patch)).then(() => msg && toast(msg)).catch((e) => toast('Not saved: ' + e.code));
+  const [incDraft, setIncDraft] = useState(null);
+  return html`<div className="screen">
+    <div className="topbar"><h1>Budgets</h1>
+      <select id="bud-month" className="input" style=${{ width: 'auto' }} value=${mk} onChange=${(e) => setMk(e.target.value)}>${monthsWithData(txs).map((m) => html`<option key=${m} value=${m}>${monthName(m, true)}</option>`)}</select></div>
+    <div className="card">
+      <h2>${monthName(mk, true)}<span className="spacer"></span><button className="link" onClick=${() => { setDraft(Object.assign({}, p.budgets)); setEdit('budgets'); }}>Edit budgets</button></h2>
+      ${b.rows.length ? html`<div className="row" style=${{ alignItems: 'baseline' }}><span style=${{ fontFamily: 'var(--font-display)', fontSize: '30px', fontWeight: 700 }} className="num">${fmt(b.left)}</span><span className="muted">left of ${fmt(b.total)}</span></div>
+        <div style=${{ margin: '8px 0 2px' }}><${Bar} value=${b.pct} level=${b.pct >= 1 ? 100 : b.pct >= 0.9 ? 90 : b.pct >= 0.75 ? 75 : 0} /></div>
+        <div className="small muted">${pct(b.pct)} used · unused budget does not carry over to next month</div>`
+      : html`<div className="empty">No budgets yet. Set a monthly limit for the categories you want to watch.<br/><button className="btn primary" style=${{ marginTop: '10px' }} onClick=${() => { setDraft(Object.assign({}, p.budgets)); setEdit('budgets'); }}>Set budgets</button></div>`}
+    </div>
+    ${b.rows.map((r) => html`<div className="card" key=${r.cat} style=${{ padding: '14px 16px' }}>
+      <div className="row"><span className="grow" style=${{ fontWeight: 700 }}>${r.cat}</span>
+        ${r.level ? html`<${Pill} tone=${r.level >= 100 ? 'bad' : 'warn'}>${r.level >= 100 ? 'Over budget' : r.level + '% reached'}</${Pill}>` : null}</div>
+      <div style=${{ margin: '10px 0 8px' }}><${Bar} value=${r.pct} level=${r.level} /></div>
+      <div className="row small num"><span className="grow">${fmt(r.spent)} of ${fmt(r.budget)} · ${pct(r.pct)}</span><span style=${{ fontWeight: 700, color: r.left < 0 ? 'var(--bad)' : 'var(--fg)' }}>${r.left < 0 ? fmt(-r.left) + ' over' : fmt(r.left) + ' left'}</span></div>
+    </div>`)}
+    ${b.unbudgeted.length ? html`<div className="card"><h2>Spending without a budget</h2>${b.unbudgeted.map((u) => html`<div className="row small" key=${u.cat} style=${{ padding: '4px 0' }}><span className="grow">${u.cat}</span><span className="num">${fmt(u.spent)}</span></div>`)}</div>` : null}
+    ${prevB.rows.length ? html`<div className="small muted">${monthName(C.shiftMonthKey(mk, -1), true)}: ${prevB.left >= 0 ? fmt(prevB.left) + ' unused' : fmt(-prevB.left) + ' over'} across budgets (kept separate, not added to this month).</div>` : null}
+
+    <div className="card"><h2>Monthly income<span className="spacer"></span><button className="link" onClick=${() => setIncDraft(clone(inc))}>Edit</button></h2>
+      <div className="kv"><span>Take-home salary</span><span>${fmt(inc.salary)}</span><span>Payday</span><span>Day ${inc.payday || 1}</span>
+        ${(inc.sources || []).map((s, i) => html`<${React.Fragment} key=${i}><span>${s.name}</span><span>${fmt(s.amount)}</span></${React.Fragment}>`)}
+        <span style=${{ fontWeight: 700 }}>Expected per month</span><span>${fmt(expected)}</span></div>
+      <div className="small muted" style=${{ marginTop: '8px' }}>Record actual money received as Income transactions; this is the plan the adviser compares against.</div></div>
+
+    <div className="card"><h2>Fixed monthly costs<span className="spacer"></span><button className="link" onClick=${() => setEdit('fixed')}>Edit</button></h2>
+      ${(p.fixed || []).length ? html`<div className="kv">${p.fixed.map((f) => html`<${React.Fragment} key=${f.id}><span>${f.name} <span className="muted small">day ${f.dueDay || '—'}${C.fixedPaid(f, txs, C.monthKey(today())) ? ' · paid' : ''}</span></span><span>${fmt(f.amount)}</span></${React.Fragment}>`)}
+        <span>EMIs</span><span>${fmt(nw.emiTotal)}</span><span style=${{ fontWeight: 700 }}>Committed each month</span><span>${fmt(fixedTotal + nw.emiTotal)}</span></div>`
+      : html`<div className="empty">Add rent and other fixed bills so Safe to Spend can hold money back for them.</div>`}</div>
+
+    <div className="card"><h2>Planned expenses<span className="spacer"></span><button className="link" onClick=${() => setEdit('planned')}>Edit</button></h2>
+      ${(p.planned || []).filter((x) => !x.done).length ? html`<div className="kv">${p.planned.filter((x) => !x.done).map((x) => html`<${React.Fragment} key=${x.id}><span>${x.name} <span className="muted small">${shortDate(x.date)}</span></span><span>${fmt(x.amount)}</span></${React.Fragment}>`)}</div>`
+      : html`<div className="empty">Trips, gifts, annual fees… anything dated here is reserved in Safe to Spend.</div>`}</div>
+
+    ${edit === 'budgets' ? html`<${Sheet} title="Monthly budgets" onClose=${() => setEdit(null)}>
+      <div className="small muted">Leave blank for no budget. Applies to every month.</div>
+      <div className="grid2">${spendCats.map((c) => html`<${Field} key=${c} label=${c}><${NumInput} id=${'b-' + c} value=${draft[c]} onChange=${(v) => setDraft(Object.assign({}, draft, { [c]: v }))} /></${Field}>`)}</div>
+      <button className="btn primary block" onClick=${() => { const clean = {}; for (const [k, v] of Object.entries(draft)) if (C.num(v) > 0) clean[k] = C.num(v); save({ budgets: clean }, 'Budgets saved'); setEdit(null); }}>Save budgets</button>
+    </${Sheet}>` : null}
+    ${edit === 'fixed' ? html`<${EditListSheet} title="Fixed monthly costs" items=${p.fixed} schema=${SCHEMAS.fixed} blank=${BLANKS.fixed} addLabel="Add fixed cost" onClose=${() => setEdit(null)} onSave=${(v) => save({ fixed: v }, 'Fixed costs saved')} />` : null}
+    ${edit === 'planned' ? html`<${EditListSheet} title="Planned expenses" items=${(p.planned || []).filter((x) => !x.done)} schema=${SCHEMAS.planned} blank=${BLANKS.planned} addLabel="Add planned expense" onClose=${() => setEdit(null)} onSave=${(v) => save({ planned: v }, 'Saved')} />` : null}
+    ${incDraft ? html`<${Sheet} title="Monthly income" onClose=${() => setIncDraft(null)}>
+      <div className="grid2"><${Field} label="Take-home salary"><${NumInput} id="inc-sal" value=${incDraft.salary} onChange=${(v) => setIncDraft(Object.assign({}, incDraft, { salary: v }))} /></${Field}>
+        <${Field} label="Payday (day of month)"><${NumInput} id="inc-pay" value=${incDraft.payday} onChange=${(v) => setIncDraft(Object.assign({}, incDraft, { payday: Math.min(31, Math.max(1, v || 1)) }))} /></${Field}></div>
+      <span className="lbl">Other regular income</span>
+      <${ItemsEditor} items=${incDraft.sources || []} setItems=${(s) => setIncDraft(Object.assign({}, incDraft, { sources: s }))} schema=${SCHEMAS.sources} blank=${BLANKS.sources} addLabel="Add income source" />
+      <button className="btn primary block" onClick=${() => { save({ income: incDraft }, 'Income saved'); setIncDraft(null); }}>Save</button>
+    </${Sheet}>` : null}
+  </div>`;
+}
+
+/* ===================== Financial health ===================== */
+function Health({ p, txs, toast, openAdd }) {
+  const [tab, setTab] = useState('overview');
+  const [edit, setEdit] = useState(null);
+  const d = today();
+  const nw = C.netWorth(p, txs); const hs = healthScore(p, txs, d); const ins = C.insights(p, txs, d);
+  const save = (patch, msg) => saveProfile(Object.assign({}, p, patch)).then(() => msg && toast(msg)).catch((e) => toast('Not saved: ' + e.code));
+  return html`<div className="screen">
+    <div className="topbar"><h1>Health</h1></div>
+    <${Seg} value=${tab} onChange=${setTab} options=${[{ v: 'overview', l: 'Overview' }, { v: 'debts', l: 'Debts' }, { v: 'savings', l: 'Savings' }, { v: 'iou', l: 'IOUs' }]} />
+    ${tab === 'overview' ? html`<${React.Fragment}>
+      <div className="card"><h2>Net worth</h2>
+        <div style=${{ fontFamily: 'var(--font-display)', fontSize: '36px', fontWeight: 700, letterSpacing: '-.02em' }} className="num">${fmt(nw.net)}</div>
+        <div className="kv" style=${{ marginTop: '10px' }}>
+          <span>Bank balance (est.)</span><span>${fmt(nw.bank)}</span><span>Savings & investments</span><span>${fmt(nw.assetValue)}</span><span>Owed to you</span><span>${fmt(nw.receivable)}</span>
+          <span style=${{ fontWeight: 700 }}>Total assets</span><span>${fmt(nw.totalAssets)}</span>
+          <span>Loans</span><span>${fmt(nw.loanDebt)}</span><span>Credit cards</span><span>${fmt(nw.cardDebt)}</span><span>You owe people</span><span>${fmt(nw.owe)}</span>
+          <span style=${{ fontWeight: 700 }}>Total liabilities</span><span>${fmt(nw.liabilities)}</span></div></div>
+      <div className="card"><h2>Health score<span className="spacer"></span><span className="num" style=${{ fontSize: '20px', color: 'var(--fg)' }}>${hs.score == null ? '—' : hs.score + '/100'}</span></h2>
+        <div className="stack">${hs.parts.map((x) => html`<div key=${x.k} className="stack" style=${{ gap: '4px' }}>
+          <div className="row small"><span className="grow" style=${{ fontWeight: 600 }}>${x.k}</span><span className="num">${x.got == null ? '—' : x.got + '/' + x.of}</span></div>
+          <${Bar} value=${x.got == null ? 0 : x.got / x.of} /><div className="small muted">${x.note}</div></div>`)}</div></div>
+      <div className="card"><h2>Coaching</h2>
+        ${ins.length ? html`<div className="stack">${ins.map((x, i) => html`<div key=${i} className="row" style=${{ alignItems: 'flex-start' }}>
+          <span className=${'pill ' + (x.tone === 'bad' ? 'bad' : x.tone === 'warn' ? 'warn' : 'good')} style=${{ marginTop: '2px' }}><span className="dot"></span></span>
+          <div className="grow"><div style=${{ fontWeight: 600 }}>${x.title}</div><div className="small muted">${x.body}</div></div></div>`)}</div>`
+        : html`<div className="empty">No warnings right now. Keep recording and this fills in.</div>`}</div>
+    </${React.Fragment}>` : null}
+
+    ${tab === 'debts' ? html`<${React.Fragment}>
+      <div className="grid2">
+        <div className="stat"><span className="k">EMIs per month</span><span className="v num">${fmt(nw.emiTotal)}</span></div>
+        <div className="stat"><span className="k">Total debt</span><span className="v num">${fmt(nw.liabilities)}</span></div></div>
+      <div className="card"><h2>Loans<span className="spacer"></span><button className="link" onClick=${() => setEdit('loans')}>Edit</button></h2>
+        ${(p.loans || []).length ? html`<div className="stack">${p.loans.map((l) => html`<${LoanCard} key=${l.id} l=${l} p=${p} toast=${toast} />`)}</div>` : html`<div className="empty">No loans added.</div>`}</div>
+      <div className="card"><h2>Credit cards<span className="spacer"></span><button className="link" onClick=${() => setEdit('cards')}>Edit</button></h2>
+        ${(p.cards || []).length ? html`<div className="stack">${p.cards.map((c) => { const o = C.cardOutstanding(c, txs); const u = C.num(c.limit) ? o / C.num(c.limit) : null; return html`<div className="item" key=${c.id}>
+          <div className="row"><span className="grow" style=${{ fontWeight: 700 }}>${c.bank}</span>${c.dueDay ? html`<${Pill} tone=${C.daysBetween(d, C.nextOnDay(d, c.dueDay)) <= 5 && o > 0 ? 'warn' : ''}>Due ${shortDate(C.nextOnDay(d, c.dueDay))}</${Pill}>` : null}</div>
+          <div className="kv"><span>Outstanding</span><span>${fmt(o)}</span><span>Available limit</span><span>${C.num(c.limit) ? fmt(C.num(c.limit) - o) : '—'}</span>
+            <span>Statement total / minimum</span><span>${fmt(c.totalDue)} / ${fmt(c.minDue)}</span><span>Statement day</span><span>${c.statementDay || '—'}</span></div>
+          ${u != null ? html`<${Bar} value=${u} level=${u > 0.6 ? 100 : u > 0.3 ? 75 : 0} />` : null}
+          <button className="btn sm" style=${{ alignSelf: 'flex-start' }} disabled=${o <= 0} onClick=${() => openAdd({ type: 'expense', category: C.CARD_PAYMENT, name: c.bank + ' card bill', amount: Math.round(C.num(c.totalDue) > 0 ? Math.min(o, C.num(c.totalDue)) : o), method: 'Bank Transfer', cardId: c.id })}>Record bill payment</button>
+        </div>`; })}</div>` : html`<div className="empty">No cards added.</div>`}
+        <div className="small muted" style=${{ marginTop: '10px' }}>Card purchases count as spending when made. Bill payments only reduce the card balance, so nothing is counted twice.</div></div>
+    </${React.Fragment}>` : null}
+
+    ${tab === 'savings' ? html`<${React.Fragment}>
+      <div className="grid2">
+        <div className="stat"><span className="k">Current value</span><span className="v num">${fmt(nw.assetValue)}</span><span className="s">Invested ${fmt(nw.invested)}</span></div>
+        <div className="stat"><span className="k">Monthly SIPs</span><span className="v num">${fmt(nw.sip)}</span><span className="s">Emergency fund ${fmt(nw.emergency)}</span></div></div>
+      <div className="card"><h2>Holdings<span className="spacer"></span><button className="link" onClick=${() => setEdit('assets')}>Update values</button></h2>
+        ${(p.assets || []).length ? html`<div className="stack">${p.assets.map((a) => { const g = C.num(a.current) - C.num(a.invested); return html`<div className="row" key=${a.id} style=${{ padding: '4px 0' }}>
+          <div className="grow" style=${{ minWidth: 0 }}><div className="ellipsis" style=${{ fontWeight: 600 }}>${a.name || a.type}</div><div className="small muted">${a.type}${C.num(a.sip) ? ' · SIP ' + fmt(a.sip) : ''}</div></div>
+          <div style=${{ textAlign: 'right' }}><div className="num" style=${{ fontWeight: 700 }}>${fmt(a.current !== '' && a.current != null ? a.current : a.invested)}</div>${C.num(a.invested) && C.num(a.current) ? html`<div className="small num" style=${{ color: g >= 0 ? 'var(--good)' : 'var(--bad)' }}>${fmt(g, { sign: true })}</div>` : null}</div></div>`; })}</div>`
+        : html`<div className="empty">Add bank savings, emergency fund, FDs, mutual funds and stocks.</div>`}
+        <div className="small muted" style=${{ marginTop: '8px' }}>Values are what you last entered; there is no live market feed.</div></div>
+      <div className="card"><h2>Monthly savings target</h2>
+        <div className="row"><${NumInput} id="sav-target" value=${(p.savingsTarget || {}).monthly} onChange=${(v) => save({ savingsTarget: { monthly: v } })} /><span className="small muted" style=${{ whiteSpace: 'nowrap' }}>per month</span></div>
+        <div className="small muted" style=${{ marginTop: '8px' }}>Held back from Safe to Spend until you record it as an Investments transaction this month.</div></div>
+      <div className="card"><h2>Goals<span className="spacer"></span><button className="link" onClick=${() => setEdit('goals')}>Edit</button></h2>
+        ${(p.goals || []).length ? html`<div className="stack">${p.goals.map((g) => { const gp = C.goalProgress(g, p, txs, d); return html`<div className="stack" key=${g.id} style=${{ gap: '6px' }}>
+          <div className="row"><span className="grow" style=${{ fontWeight: 700 }}>${g.name || 'Goal'}</span><span className="num">${fmt(gp.saved)} / ${fmt(gp.target)}</span></div>
+          <${Bar} value=${gp.pct} />
+          <div className="small muted">${gp.left <= 0 ? 'Reached.' : gp.months == null ? 'Not enough savings history to estimate a date. Set a planned monthly amount.' : 'At ' + fmt(gp.rate) + '/month (' + gp.rateSource + '): about ' + gp.months + ' months, around ' + monthName(gp.eta.slice(0, 7), true) + '.'}</div></div>`; })}</div>`
+        : html`<div className="empty">No goals yet.</div>`}</div>
+    </${React.Fragment}>` : null}
+
+    ${tab === 'iou' ? html`<${IOUs} p=${p} toast=${toast} save=${save} />` : null}
+
+    ${edit === 'loans' ? html`<${EditListSheet} title="Loans & EMIs" items=${p.loans} schema=${SCHEMAS.loans} blank=${BLANKS.loans} addLabel="Add loan" onClose=${() => setEdit(null)} onSave=${(v) => save({ loans: v }, 'Loans saved')} />` : null}
+    ${edit === 'cards' ? html`<${EditListSheet} title="Credit cards" note="Outstanding shows today's figure, including purchases recorded here. Change it only to match your bank app." items=${cardsForEdit(p.cards, txs)} schema=${SCHEMAS.cards} blank=${BLANKS.cards} addLabel="Add card" onClose=${() => setEdit(null)} onSave=${(v) => save({ cards: cardsFromEdit(v, p.cards, txs) }, 'Cards saved')} />` : null}
+    ${edit === 'assets' ? html`<${EditListSheet} title="Savings & investments" items=${p.assets} schema=${SCHEMAS.assets} blank=${BLANKS.assets} addLabel="Add holding" onClose=${() => setEdit(null)} onSave=${(v) => save({ assets: v }, 'Holdings saved')} />` : null}
+    ${edit === 'goals' ? html`<${EditListSheet} title="Goals" items=${p.goals} schema=${SCHEMAS.goals} blank=${BLANKS.goals} addLabel="Add goal" onClose=${() => setEdit(null)} onSave=${(v) => save({ goals: v }, 'Goals saved')} />` : null}
+  </div>`;
+}
+
+function LoanCard({ l, p, toast }) {
+  const [confirm, setConfirm] = useState(false);
+  const done = C.num(l.remainingEmis) <= 0;
+  async function paid() {
+    const t = { id: C.uid(), type: 'expense', amount: C.num(l.emi), name: l.lender + ' EMI', category: 'EMIs', date: today(), method: 'Bank Transfer', notes: '', createdAt: Date.now(), loanId: l.id };
+    const interest = C.num(l.outstanding) * C.num(l.rate) / 1200;
+    const loans = p.loans.map((x) => x.id !== l.id ? x : Object.assign({}, x, {
+      remainingEmis: Math.max(0, C.num(x.remainingEmis) - 1), nextDate: x.nextDate ? C.addMonths(x.nextDate, 1) : '',
+      outstanding: Math.max(0, Math.round(C.num(x.outstanding) - Math.max(0, C.num(x.emi) - interest))),
+    }));
+    setConfirm(false);
+    try { await Promise.all([saveTx(t, null), saveProfile(Object.assign({}, p, { loans }))]); toast('EMI recorded · ' + fmt(t.amount)); } catch (e) { toast('Not saved: ' + e.code); }
+  }
+  const paidPct = C.num(l.original) ? 1 - C.num(l.outstanding) / C.num(l.original) : null;
+  return html`<div className="item">
+    <div className="row"><span className="grow" style=${{ fontWeight: 700 }}>${l.lender || 'Loan'}</span>${done ? html`<${Pill} tone="good">Closed</${Pill}>` : l.nextDate ? html`<${Pill} tone=${l.nextDate < today() ? 'bad' : C.daysBetween(today(), l.nextDate) <= 5 ? 'warn' : ''}>Next ${shortDate(l.nextDate)}</${Pill}>` : null}</div>
+    <div className="kv"><span>Outstanding principal</span><span>${fmt(l.outstanding)}</span><span>EMI</span><span>${fmt(l.emi)}</span>
+      <span>Interest rate</span><span>${l.rate !== '' && l.rate != null ? l.rate + '%' : '—'}</span><span>EMIs left</span><span>${l.remainingEmis || 0}</span></div>
+    ${paidPct != null ? html`<${Bar} value=${paidPct} /><div className="small muted">${pct(paidPct)} of ${fmt(l.original)} repaid</div>` : null}
+    ${done ? null : confirm ? html`<div className="row"><span className="grow small">Record ${fmt(l.emi)} paid today?</span><button className="btn sm" onClick=${() => setConfirm(false)}>Cancel</button><button className="btn sm primary" onClick=${paid}>Confirm</button></div>`
+      : html`<button className="btn sm" style=${{ alignSelf: 'flex-start' }} onClick=${() => setConfirm(true)}>Mark this month's EMI paid</button>`}
+  </div>`;
+}
+
+function IOUs({ p, toast, save }) {
+  const [side, setSide] = useState('lent');
+  const [edit, setEdit] = useState(false);
+  const [payFor, setPayFor] = useState(null);
+  const [amt, setAmt] = useState('');
+  const d = today();
+  const list = p[side] || [];
+  const total = C.sum(list, C.iouLeft);
+  function recordPayment(x) {
+    const a = C.num(amt); if (!(a > 0)) return;
+    const upd = list.map((y) => y.id !== x.id ? y : Object.assign({}, y, { payments: (y.payments || []).concat([{ amount: Math.min(a, C.iouLeft(y)), date: d }]) }));
+    save({ [side]: upd }, side === 'lent' ? 'Repayment received · ' + fmt(a) : 'Payment recorded · ' + fmt(a));
+    setPayFor(null); setAmt('');
+  }
+  return html`<${React.Fragment}>
+    <${Seg} value=${side} onChange=${setSide} options=${[{ v: 'lent', l: 'Owed to me' }, { v: 'borrowed', l: 'I owe' }]} />
+    <div className="stat"><span className="k">${side === 'lent' ? 'Still to come back to you' : 'You still owe'}</span><span className="v num">${fmt(total)}</span></div>
+    <div className="card"><h2>${side === 'lent' ? 'Money owed to me' : 'Money I owe'}<span className="spacer"></span><button className="link" onClick=${() => setEdit(true)}>Add / edit</button></h2>
+      ${list.length ? html`<div className="stack">${list.slice().sort((a, b) => C.iouLeft(b) - C.iouLeft(a)).map((x) => { const st = C.iouStatus(x, d); return html`<div className="item" key=${x.id}>
+        <div className="row"><span className="grow" style=${{ fontWeight: 700 }}>${x.person || '—'}</span><${Pill} tone=${st === 'Settled' ? 'good' : st === 'Overdue' ? 'bad' : st === 'Partly paid' ? 'warn' : ''}>${st}</${Pill}></div>
+        <div className="kv"><span>Amount</span><span>${fmt(x.amount)}</span><span>${side === 'lent' ? 'Received' : 'Paid'}</span><span>${fmt(C.iouPaid(x))}</span><span>Remaining</span><span>${fmt(C.iouLeft(x))}</span>
+          <span>${side === 'lent' ? 'Lent on' : 'Borrowed on'}</span><span>${shortDate(x.date)}</span><span>${side === 'lent' ? 'Expected back' : 'Due'}</span><span>${shortDate(side === 'lent' ? x.expected : x.due)}</span></div>
+        ${x.notes ? html`<div className="small muted">${x.notes}</div>` : null}
+        ${C.iouLeft(x) > 0 ? (payFor === x.id ? html`<div className="row"><${NumInput} id=${'pay-' + x.id} value=${amt} placeholder=${String(C.iouLeft(x))} onChange=${setAmt} /><button className="btn sm primary" onClick=${() => recordPayment(x)}>Save</button><button className="btn sm" onClick=${() => setPayFor(null)}>Cancel</button></div>`
+          : html`<button className="btn sm" style=${{ alignSelf: 'flex-start' }} onClick=${() => { setPayFor(x.id); setAmt(C.iouLeft(x)); }}>${side === 'lent' ? 'Record money received' : 'Record a payment'}</button>`) : null}
+      </div>`; })}</div>` : html`<div className="empty">${side === 'lent' ? 'Nobody owes you money. Shared bills you split in Add land here automatically.' : 'You do not owe anyone.'}</div>`}</div>
+    ${edit ? html`<${EditListSheet} title=${side === 'lent' ? 'Money owed to me' : 'Money I owe'} items=${list} schema=${SCHEMAS[side]} blank=${BLANKS[side]} addLabel="Add entry" onClose=${() => setEdit(false)} onSave=${(v) => save({ [side]: v }, 'Saved')}
+      note=${side === 'lent' ? 'Entries dated after your last bank-balance update are deducted from the balance (the money left your account).' : 'Entries dated after your last bank-balance update are added to the balance (the money came in).'} />` : null}
+  </${React.Fragment}>`;
+}
+/* Finance OS — AI adviser, settings, first-run setup, app shell. */
+
+/* ===================== Adviser ===================== */
+function adviserData(p, txs, d) {
+  const mk = C.monthKey(d);
+  const st = C.safeToSpend(p, txs, d); const nw = C.netWorth(p, txs); const cur = C.monthSummary(txs, mk);
+  const b = C.budgetStatus(p, txs, mk);
+  const hist = [-3, -2, -1].map((i) => C.monthSummary(txs, C.shiftMonthKey(mk, i)));
+  const missing = st.missing.slice();
+  if (!nw.emergency) missing.push('emergency fund amount');
+  if (!C.num(p.savingsTarget && p.savingsTarget.monthly)) missing.push('monthly savings target');
+  if ((p.cards || []).some((c) => !C.num(c.dueDay))) missing.push('a credit-card due date');
+  if ((p.loans || []).some((l) => !l.nextDate)) missing.push('a loan next-EMI date');
+  if (!txs.length) missing.push('any recorded transactions');
+  const L = [];
+  L.push('TODAY: ' + d + ' (day ' + C.parse(d).getDate() + ' of ' + C.daysInMonth(C.parse(d).getFullYear(), C.parse(d).getMonth()) + ')');
+  L.push('BANK BALANCE (estimated): ' + (st.bank == null ? 'UNKNOWN' : fmt(st.bank) + ' — last entered by user on ' + p.bank.asOf + ', rolled forward with recorded transactions'));
+  L.push('NEXT PAYDAY: ' + st.payday + ' (' + st.days + ' days away). Take-home salary: ' + fmt(p.income.salary) + '. Other expected monthly income: ' + fmt(C.sum(p.income.sources || [], (s) => s.amount)));
+  L.push('SAFE TO SPEND until payday: ' + (st.safe == null ? 'UNKNOWN' : fmt(st.safe) + ' (≈' + fmt(st.perDay) + '/day)') + (st.shortfall ? '. SHORTFALL of ' + fmt(st.shortfall) + ' against obligations' : ''));
+  L.push('  = bank − obligations before payday ' + fmt(st.due) + ' − savings still to set aside this month ' + fmt(st.savings) + ' − cushion ' + fmt(st.cushion));
+  L.push('OBLIGATIONS BEFORE PAYDAY: ' + (st.obligations.map((o) => o.kind + ' ' + o.name + ' ' + fmt(o.amount) + ' on ' + o.date + (o.minDue ? ' (min due ' + fmt(o.minDue) + ')' : '')).join('; ') || 'none'));
+  L.push('FIXED MONTHLY COSTS: ' + ((p.fixed || []).map((f) => f.name + ' ' + fmt(f.amount) + ' day ' + f.dueDay).join('; ') || 'none entered'));
+  L.push('LOANS: ' + ((p.loans || []).map((l) => l.lender + ': outstanding ' + fmt(l.outstanding) + ', EMI ' + fmt(l.emi) + ', ' + (l.rate || '?') + '% p.a., ' + (l.remainingEmis || 0) + ' EMIs left, next ' + (l.nextDate || '?')).join('; ') || 'none') + '. Total EMIs/month ' + fmt(nw.emiTotal));
+  L.push('CREDIT CARDS: ' + ((p.cards || []).map((c) => c.bank + ': outstanding ' + fmt(C.cardOutstanding(c, txs)) + ', limit ' + fmt(c.limit) + ', statement total ' + fmt(c.totalDue) + ', min due ' + fmt(c.minDue) + ', due day ' + (c.dueDay || '?')).join('; ') || 'none'));
+  L.push('THIS MONTH (' + mk + '): income received ' + fmt(cur.income) + ', spent ' + fmt(cur.spend) + ', invested ' + fmt(cur.invested) + ', savings rate ' + pct(cur.savingsRate));
+  L.push('BUDGETS: ' + (b.rows.map((r) => r.cat + ' ' + fmt(r.spent) + '/' + fmt(r.budget) + ' (' + pct(r.pct) + ')').join('; ') || 'none set'));
+  L.push('LAST 3 MONTHS: ' + hist.map((h) => h.mk + ' income ' + fmt(h.income) + ' spent ' + fmt(h.spend) + ' saved ' + pct(h.savingsRate)).join('; '));
+  L.push('TOP CATEGORIES THIS MONTH: ' + (C.byKey(C.monthTx(txs, mk).filter(C.isSpend), (t) => t.category, C.myShare).slice(0, 6).map((x) => x.k + ' ' + fmt(x.v)).join('; ') || 'none'));
+  L.push('TOP MERCHANTS (60 days): ' + (C.byKey(txs.filter((t) => C.isSpend(t) && t.date > C.addDays(d, -60) && t.name), (t) => t.name.trim(), C.myShare).slice(0, 8).map((x) => x.k + ' ' + fmt(x.v)).join('; ') || 'none'));
+  L.push('SAVINGS & INVESTMENTS: total ' + fmt(nw.assetValue) + ' (emergency fund ' + fmt(nw.emergency) + ', SIPs ' + fmt(nw.sip) + '/month). Monthly savings target ' + fmt((p.savingsTarget || {}).monthly));
+  L.push('GOALS: ' + ((p.goals || []).map((g) => { const gp = C.goalProgress(g, p, txs, d); return g.name + ' ' + fmt(gp.saved) + '/' + fmt(gp.target) + (gp.eta ? ', ETA ' + gp.eta.slice(0, 7) : ''); }).join('; ') || 'none'));
+  L.push('PLANNED EXPENSES: ' + ((p.planned || []).filter((x) => !x.done).map((x) => x.name + ' ' + fmt(x.amount) + ' on ' + x.date).join('; ') || 'none'));
+  L.push('OWED TO USER: ' + fmt(nw.receivable) + '. USER OWES PEOPLE: ' + fmt(nw.owe));
+  L.push('NET WORTH: ' + fmt(nw.net) + ' (assets ' + fmt(nw.totalAssets) + ', liabilities ' + fmt(nw.liabilities) + ')');
+  L.push('MISSING INFORMATION: ' + (missing.join(', ') || 'none'));
+  return L.join('\n');
+}
+
+const ADVISER_RULES = `You are the user's personal financial adviser inside their finance app. They live in India; all money is INR, written like ₹8,000 or ₹1,50,000.
+Rules:
+- Use ONLY the figures in DATA and PURCHASE CHECK. Never invent balances, incomes or prices. If something you need is listed as MISSING or UNKNOWN, say exactly what is missing and ask the user to add it (Settings or the relevant tab) before giving a firm answer.
+- Be financially disciplined. Do not approve a purchase just because the user wants it. Protect, in order: essential bills and EMIs, the full credit-card amount due (never suggest paying only the minimum), the emergency fund, the monthly savings target.
+- For any question about buying, spending or affording something, the FIRST line of your reply must be exactly one of: "VERDICT: YES", "VERDICT: WAIT", "VERDICT: NO".
+  YES = fits within Safe to Spend with a comfortable margin (as a guide, a discretionary purchase under about half of Safe to Spend) and touches no obligation, savings target or emergency fund.
+  WAIT = possible, but better after the next payday or once a card bill is cleared; say the date.
+  NO = would eat into obligations, the savings target or the emergency fund, or would leave card debt that cannot be paid in full.
+  Then give these short sections, each starting on its own line: "Why:", "Available now:", "After buying:", "Savings target:", "Comfortably affordable:" (when, with a date or a monthly set-aside plan).
+- For other questions answer directly with numbers from DATA, no VERDICT line.
+- Plain text only, no markdown symbols, no tables. Under 200 words. Short sentences.`;
+
+function Adviser({ p, txs }) {
+  const [turns, setTurns] = useState([]);
+  const [q, setQ] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [sample, setSample] = useState(undefined);
+  const ctl = useRef(null);
+  const endRef = useRef();
+  useEffect(() => { useCap('sample').then((s) => setSample(() => s || null)).catch(() => setSample(null)); }, []);
+  useEffect(() => { if (endRef.current) endRef.current.scrollIntoView({ block: 'end' }); }, [turns]);
+  const d = today();
+  const data = adviserData(p, txs, d);
+
+  async function ask(text, kind) {
+    if (!text.trim() || busy || !sample) return;
+    const amount = kind === 'weekly' ? null : C.parseAmount(text);
+    let extra = '';
+    if (amount) {
+      const pc = C.purchaseCheck(p, txs, d, amount);
+      extra = '\nPURCHASE CHECK (pre-computed, use these numbers): amount ' + fmt(amount) + '; Safe to Spend before ' + fmt(pc.safeBefore) + ', after ' + fmt(pc.safeAfter) + '; bank balance after ' + fmt(pc.bankAfter) + '; obligations before payday ' + fmt(pc.dueBeforePayday) + '; next payday ' + pc.payday + '; emergency fund ' + fmt(pc.emergencyFund) + '; app rule-of-thumb verdict ' + (pc.ruleOfThumb || 'UNKNOWN (missing data)') + ' (you may be stricter, e.g. if the item is non-essential or a budget is already exceeded).';
+    }
+    if (kind === 'weekly') {
+      const w = C.weekly(txs, d);
+      extra = '\nWEEK ' + w.from + ' to ' + w.to + ': spent ' + fmt(w.spend) + ' in ' + w.count + ' transactions (previous 7 days ' + fmt(w.prev) + '). Top: ' + (w.top.map((x) => x.k + ' ' + fmt(x.v)).join(', ') || 'none') +
+        '\nAPP INSIGHTS: ' + (C.insights(p, txs, d).map((x) => x.title + ' — ' + x.body).join(' | ') || 'none') +
+        '\nWrite a weekly financial health summary with these sections, each on its own line: "This week:", "Watch:", "Wins:", "Next 7 days:" (2-3 concrete actions with ₹ amounts), "Debt:" (is it going down), "Savings:" (on track or not). No VERDICT line.';
+    }
+    const display = kind === 'weekly' ? 'Give me my weekly financial health summary.' : text.trim();
+    const history = turns.filter((t) => !t.error).slice(-6).map((t) => ({ role: t.role, content: t.content }));
+    const input = [{ role: 'user', content: ADVISER_RULES + '\n\nDATA (from the app, as of now):\n' + data }].concat(history, [{ role: 'user', content: display + extra }]);
+    const id = C.uid();
+    setTurns((ts) => ts.concat([{ id: id + 'q', role: 'user', content: display }, { id, role: 'assistant', content: '', thinking: true }]));
+    setQ(''); setBusy(true);
+    ctl.current = new AbortController();
+    try {
+      const { text: out } = await sample(input, { cache: false, signal: ctl.current.signal, onText: ({ text: t }) => setTurns((ts) => ts.map((x) => x.id === id ? Object.assign({}, x, { content: t, thinking: false }) : x)) });
+      setTurns((ts) => ts.map((x) => x.id === id ? Object.assign({}, x, { content: out, thinking: false }) : x));
+    } catch (e) {
+      const msg = e.code === 'not_granted' ? 'Claude access was not allowed for this app. Allow it from the artifact permissions to use the adviser.'
+        : e.code === 'rate_limited' ? 'Usage limit reached for now. Try again a little later.'
+        : e.code === 'cancelled' ? (e.text || '') + '\n(Stopped)' : 'The adviser could not answer (' + e.code + ').';
+      setTurns((ts) => ts.map((x) => x.id === id ? Object.assign({}, x, { content: msg, thinking: false, error: e.code !== 'cancelled' }) : x));
+    }
+    setBusy(false);
+  }
+
+  const chips = ['Can I spend ₹8,000 on shoes?', 'Can I afford a ₹15,000 phone?', 'How much can I spend this weekend?', 'Am I overspending on food?', 'Should I pay my credit-card debt first?', 'How much should I save this month?', 'How much will I have left by month end?', 'Can I afford a vacation next month?', 'Can I afford to buy a car?'];
+  return html`<div className="screen">
+    <div className="topbar"><h1>Adviser</h1>${turns.length ? html`<button className="btn sm" onClick=${() => setTurns([])}>New chat</button>` : null}</div>
+    ${sample === null ? html`<div className="banner warn">The AI adviser needs this page to be open inside Claude with access to Claude allowed. Everything else in the app works without it.</div>` : null}
+    ${!turns.length ? html`<div className="card"><h2>Ask about your money</h2>
+      <div className="small muted" style=${{ marginBottom: '10px' }}>Answers use your recorded balance, bills, EMIs, cards, budgets and goals. Purchase questions get YES, WAIT or NO.</div>
+      <div className="chips wrap">${chips.map((c) => html`<button key=${c} className="chip" disabled=${!sample} onClick=${() => ask(c)}>${c}</button>`)}</div>
+      <button className="btn primary block" style=${{ marginTop: '12px' }} disabled=${!sample} onClick=${() => ask('weekly', 'weekly')}>Weekly health summary</button></div>` : null}
+    <div className="msgs">${turns.map((t) => t.role === 'user' ? html`<div key=${t.id} className="msg me">${t.content}</div>` : html`<${AiMsg} key=${t.id} t=${t} />`)}<div ref=${endRef}></div></div>
+    <details><summary>What the adviser sees</summary><pre className="ctx">${data}</pre></details>
+    <div className="composer">
+      <textarea id="adv-q" className="input" rows="1" placeholder="Can I afford…?" value=${q} onChange=${(e) => setQ(e.target.value)} onKeyDown=${(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); ask(q); } }}></textarea>
+      ${busy ? html`<button className="btn" onClick=${() => ctl.current && ctl.current.abort()}>Stop</button>` : html`<button className="btn primary" aria-label="Ask" disabled=${!sample || !q.trim()} onClick=${() => ask(q)}><span style=${{ width: '20px', height: '20px', display: 'inline-block' }}><${Icon} name="send" /></span></button>`}
+    </div>
+  </div>`;
+}
+function AiMsg({ t }) {
+  if (t.thinking) return html`<div className="msg ai muted">Thinking…</div>`;
+  const clean = (t.content || '').replace(/\*\*(.*?)\*\*/g, '$1').replace(/^#+\s*/gm, '');
+  const m = clean.match(/^\s*VERDICT:\s*(YES|WAIT|NO)\b[^\n]*\n?/i);
+  const v = m && m[1].toUpperCase();
+  const label = { YES: 'YES · Affordable', WAIT: 'WAIT · Not right now', NO: 'NO · Avoid this purchase' };
+  return html`<div className="msg ai">${v ? html`<div className=${'verdict ' + v}>${label[v]}</div>` : null}${v ? clean.slice(m[0].length) : clean}</div>`;
+}
+
+/* ===================== Settings ===================== */
+function Settings({ p, txs, status, onClose, toast, rerunSetup }) {
+  const [bank, setBank] = useState('');
+  const [theme, setTheme] = useState(lsGet('financeos.theme') || 'system');
+  const [imp, setImp] = useState(null);
+  const [cushion, setCushion] = useState(p.cushion);
+  const fileRef = useRef();
+  const bal = C.bankBalance(p, txs);
+  async function saveBank() {
+    if (bank === '') return;
+    try { await saveProfile(Object.assign({}, p, { bank: { amount: C.num(bank), asOf: today(), asOfTs: Date.now() } })); toast('Bank balance updated'); setBank(''); } catch (e) { toast('Not saved: ' + e.code); }
+  }
+  function applyTheme(v) { setTheme(v); lsSet('financeos.theme', v); applyThemeAttr(v); }
+  async function download(name, data) {
+    const dl = await useCap('downloads');
+    if (!dl) { toast('Downloads are not available in this view'); return; }
+    try { await dl.save({ filename: name, data }); toast('Exported ' + name); } catch (e) { if (e.code !== 'declined') toast('Export failed: ' + e.code); }
+  }
+  const backup = () => JSON.stringify({ app: 'finance-os', version: 1, exportedAt: new Date().toISOString(), profile: p, transactions: txs }, null, 1);
+  function onFile(e) {
+    const f = e.target.files && e.target.files[0]; if (!f) return;
+    const r = new FileReader();
+    r.onload = () => {
+      try {
+        const j = JSON.parse(r.result);
+        if (j.app !== 'finance-os' || !j.profile || !Array.isArray(j.transactions)) throw new Error('not a Finance OS backup');
+        setImp(j);
+      } catch (err) { toast('That file is not a Finance OS backup'); }
+    };
+    r.readAsText(f); e.target.value = '';
+  }
+  async function doImport() {
+    const j = imp; setImp(null);
+    const months = {};
+    for (const t of j.transactions) (months[C.monthKey(t.date)] = months[C.monthKey(t.date)] || []).push(t);
+    for (const k of Object.keys(store.docs)) if (k.startsWith('tx-') && !months[k.slice(3)]) months[k.slice(3)] = [];
+    try {
+      await Promise.all([saveProfile(Object.assign({}, j.profile, { setupDone: true }))].concat(Object.entries(months).map(([mk, items]) => store.write('tx-' + mk, { items }))));
+      toast('Backup restored · ' + j.transactions.length + ' transactions');
+    } catch (e) { toast('Restore incomplete: ' + e.code); }
+  }
+  return html`<${Sheet} title="Settings" onClose=${onClose}>
+    <div className="card"><h2>Your data</h2>
+      ${status.mode === 'cloud' ? html`<div className="small">Saved privately to your Claude account (only you can read it), so it is there on your iPhone and any other device where you open this app.</div>`
+      : html`<div className="banner bad small">Cloud storage is not available in this view, so data is saved in this browser only. It can be lost if browser data is cleared, and it will not appear on other devices. Export a backup regularly.</div>`}
+      <div className="kv" style=${{ marginTop: '10px' }}><span>Last saved</span><span>${status.lastSaved ? status.lastSaved.toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }) : '—'}</span>
+        <span>Transactions stored</span><span>${txs.length}</span></div>
+      ${status.error ? html`<div className="banner bad small" style=${{ marginTop: '10px' }}><div className="grow">${status.error}</div>${status.failedDocs.length ? html`<button className="btn sm" onClick=${() => store.retry()}>Retry</button>` : null}</div>` : null}
+    </div>
+    <div className="card"><h2>Bank balance</h2>
+      <div className="small muted" style=${{ marginBottom: '8px' }}>Current estimate ${fmt(bal)}${p.bank.asOf ? ' (you last entered ' + fmt(p.bank.amount) + ' on ' + shortDate(p.bank.asOf) + ')' : ''}. Enter what your bank app shows to correct it.</div>
+      <div className="row"><${NumInput} id="set-bank" value=${bank} placeholder="Balance in bank app" onChange=${setBank} /><button className="btn primary" onClick=${saveBank}>Update</button></div></div>
+    <div className="card"><h2>Safety cushion</h2>
+      <div className="small muted" style=${{ marginBottom: '8px' }}>Always kept back from Safe to Spend.</div>
+      <div className="row"><${NumInput} id="set-cushion" value=${cushion} onChange=${setCushion} /><button className="btn" onClick=${() => saveProfile(Object.assign({}, p, { cushion: C.num(cushion) })).then(() => toast('Saved'))}>Save</button></div></div>
+    <div className="card"><h2>Appearance</h2><${Seg} value=${theme} onChange=${applyTheme} options=${[{ v: 'system', l: 'System' }, { v: 'light', l: 'Light' }, { v: 'dark', l: 'Dark' }]} /></div>
+    <div className="card"><h2>Backup & restore</h2><div className="stack">
+      <button className="btn block" onClick=${() => download('finance-os-backup-' + today() + '.json', backup())}>Export full backup (JSON)</button>
+      <button className="btn block" onClick=${() => download('transactions-' + today() + '.csv', C.toCSV(txs))}>Export transactions (CSV)</button>
+      <button className="btn block" onClick=${() => fileRef.current.click()}>Restore from backup…</button>
+      <input ref=${fileRef} id="set-import" type="file" accept=".json,application/json" hidden onChange=${onFile} />
+      ${imp ? html`<div className="banner warn"><div className="grow">Replace everything with the backup from ${shortDate((imp.exportedAt || '').slice(0, 10))} (${imp.transactions.length} transactions)? Current data will be overwritten.</div></div>
+        <div className="row"><button className="btn grow" onClick=${() => setImp(null)}>Cancel</button><button className="btn danger grow" onClick=${doImport}>Replace my data</button></div>` : null}
+    </div></div>
+    <div className="card"><h2>Custom categories</h2>
+      ${(p.customCategories || []).length ? html`<div className="chips wrap">${p.customCategories.map((c) => html`<button key=${c} className="chip" onClick=${() => saveProfile(Object.assign({}, p, { customCategories: p.customCategories.filter((x) => x !== c) })).then(() => toast('Removed ' + c))}>${c} ✕</button>`)}</div>`
+      : html`<div className="small muted">Add one from the category list when adding a transaction.</div>`}</div>
+    <button className="btn block" onClick=${rerunSetup}>Run the setup again</button>
+    <div className="small muted">Safe to Spend = estimated bank balance − bills, EMIs, card dues, planned expenses and debts due before payday − savings still to set aside this month − cushion.</div>
+  </${Sheet}>`;
+}
+
+let initialThemeAttr = null;
+function applyThemeAttr(v) {
+  const el = document.documentElement;
+  if (initialThemeAttr === null) initialThemeAttr = el.getAttribute('data-theme') || '';
+  if (v === 'light' || v === 'dark') el.setAttribute('data-theme', v);
+  else if (initialThemeAttr) el.setAttribute('data-theme', initialThemeAttr); else el.removeAttribute('data-theme');
+}
+
+/* ===================== First-run setup ===================== */
+const SETUP_STEPS = ['Welcome', 'Money now', 'Fixed costs', 'Loans & EMIs', 'Credit cards', 'Savings', 'Targets'];
+function Setup({ existing, txs, onDone, onCancel }) {
+  const [i, setI] = useState(existing ? 1 : 0);
+  const [s, setS] = useState(() => {
+    const b = existing ? Object.assign(C.blankState(), clone(existing), { cards: cardsForEdit(existing.cards, txs) }) : C.blankState();
+    if (!existing) {
+      b.fixed = [{ id: C.uid(), name: 'Rent', category: 'Rent', amount: '', dueDay: 5 }];
+      b.loans = [{ id: C.uid(), lender: '', original: '', outstanding: '', emi: 9519, rate: '', remainingEmis: '', nextDate: '' }];
+      b.cards = [{ id: C.uid(), bank: 'HDFC', method: 'HDFC Credit Card', limit: '', outstanding: '', statementDay: '', dueDay: '', totalDue: '', minDue: '' }];
+      b.assets = [{ id: C.uid(), type: 'Emergency fund', name: 'Emergency fund', invested: '', current: '', sip: '' }, { id: C.uid(), type: 'Bank savings', name: 'Savings account', invested: '', current: '', sip: '' }];
+      b.goals = [{ id: C.uid(), name: 'Savings goal', target: 500000, saved: '', monthly: '', linkNetSavings: true }];
+    }
+    return b;
+  });
+  const [bank, setBank] = useState(existing ? '' : '');
+  const set = (patch) => setS((o) => Object.assign({}, o, patch));
+  const has = (x, keys) => keys.some((k) => x[k] !== '' && x[k] != null && x[k] !== 0);
+  async function finish() {
+    const out = Object.assign({}, s, { setupDone: true });
+    out.fixed = s.fixed.filter((x) => C.num(x.amount) > 0);
+    out.loans = s.loans.filter((x) => has(x, ['lender', 'outstanding', 'original']) || (C.num(x.emi) > 0 && x.lender));
+    out.cards = existing ? cardsFromEdit(s.cards, existing.cards, txs) : s.cards.filter((x) => has(x, ['limit', 'outstanding', 'dueDay'])).map((c) => Object.assign({}, c, { asOf: today(), asOfTs: Date.now() }));
+    out.assets = s.assets.filter((x) => has(x, ['invested', 'current']));
+    out.goals = s.goals.filter((x) => C.num(x.target) > 0);
+    if (bank !== '') out.bank = { amount: C.num(bank), asOf: today(), asOfTs: Date.now() };
+    await onDone(out);
+  }
+  const step = SETUP_STEPS[i];
+  return html`<div className="screen" style=${{ paddingTop: '8px' }}>
+    <div className="topbar" style=${{ flexDirection: 'column', alignItems: 'stretch', gap: '10px' }}>
+      <div className="steps">${SETUP_STEPS.map((_, j) => html`<i key=${j} className=${j <= i ? 'on' : ''}></i>`)}</div>
+      <div className="row"><h1>${step}</h1>${onCancel ? html`<button className="iconbtn" aria-label="Close setup" onClick=${onCancel}><${Icon} name="x" /></button>` : null}</div>
+    </div>
+    ${i === 0 ? html`<div className="card stack">
+      <div style=${{ fontSize: '17px', lineHeight: 1.5 }}>Let's set up your money picture. It takes about three minutes, and every step can be skipped and edited later.</div>
+      <div className="small muted">Some fields start with figures from your notes (salary ₹67,000, EMI ₹9,519, ₹5 lakh goal). They are only starting points: check each one against your bank app. Old balances are never assumed.</div></div>` : null}
+    ${i === 1 ? html`<div className="card stack">
+      <${Field} label="Current bank balance (from your bank app today)"><${NumInput} id="su-bank" value=${bank} placeholder=${existing ? 'Leave blank to keep the current estimate' : 'e.g. 42000'} onChange=${setBank} /></${Field}>
+      <div className="grid2"><${Field} label="Monthly take-home salary"><${NumInput} id="su-salary" value=${s.income.salary} onChange=${(v) => set({ income: Object.assign({}, s.income, { salary: v }) })} /></${Field}>
+        <${Field} label="Payday (day of month)"><${NumInput} id="su-payday" value=${s.income.payday} onChange=${(v) => set({ income: Object.assign({}, s.income, { payday: Math.min(31, Math.max(1, v || 1)) }) })} /></${Field}></div>
+      <span className="lbl">Other regular income (freelance, rent received…)</span>
+      <${ItemsEditor} items=${s.income.sources || []} setItems=${(v) => set({ income: Object.assign({}, s.income, { sources: v }) })} schema=${SCHEMAS.sources} blank=${BLANKS.sources} addLabel="Add income source" />
+    </div>` : null}
+    ${i === 2 ? html`<div className="stack"><div className="small muted">Rent, utilities, phone, subscriptions, SIPs paid by mandate… anything that leaves every month. Rows left at zero are skipped.</div>
+      <${ItemsEditor} items=${s.fixed} setItems=${(v) => set({ fixed: v })} schema=${SCHEMAS.fixed} blank=${BLANKS.fixed} addLabel="Add fixed cost" /></div>` : null}
+    ${i === 3 ? html`<div className="stack"><div className="small muted">The EMI of ₹9,519 is from your notes. Confirm it and fill in the lender, outstanding amount and next date, or remove the row.</div>
+      <${ItemsEditor} items=${s.loans} setItems=${(v) => set({ loans: v })} schema=${SCHEMAS.loans} blank=${BLANKS.loans} addLabel="Add loan" /></div>` : null}
+    ${i === 4 ? html`<div className="stack"><div className="small muted">Enter today's outstanding from your card app. New card purchases you record here are added automatically, and bill payments reduce it.</div>
+      <${ItemsEditor} items=${s.cards} setItems=${(v) => set({ cards: v })} schema=${SCHEMAS.cards} blank=${BLANKS.cards} addLabel="Add card" /></div>` : null}
+    ${i === 5 ? html`<div className="stack"><div className="small muted">Emergency fund, savings accounts, FDs, mutual funds, stocks. Keep the bank account you spend from out of this list; it is the balance in step 2.</div>
+      <${ItemsEditor} items=${s.assets} setItems=${(v) => set({ assets: v })} schema=${SCHEMAS.assets} blank=${BLANKS.assets} addLabel="Add holding" /></div>` : null}
+    ${i === 6 ? html`<div className="stack">
+      <div className="card stack"><${Field} label="Save every month (target)"><${NumInput} id="su-target" value=${s.savingsTarget.monthly} placeholder="e.g. 15000" onChange=${(v) => set({ savingsTarget: { monthly: v } })} /></${Field}>
+        <${Field} label="Safety cushion kept out of Safe to Spend"><${NumInput} id="su-cushion" value=${s.cushion} onChange=${(v) => set({ cushion: v })} /></${Field}></div>
+      <span className="lbl">Long-term goals (your notes say ₹3–5 lakh)</span>
+      <${ItemsEditor} items=${s.goals} setItems=${(v) => set({ goals: v })} schema=${SCHEMAS.goals} blank=${BLANKS.goals} addLabel="Add goal" /></div>` : null}
+    <div className="row">
+      ${i > 0 ? html`<button className="btn" onClick=${() => setI(i - 1)}>Back</button>` : null}
+      <span className="grow"></span>
+      ${i > 0 && i < SETUP_STEPS.length - 1 ? html`<button className="link" onClick=${() => setI(i + 1)}>Skip</button>` : null}
+      ${i < SETUP_STEPS.length - 1 ? html`<button className="btn primary" onClick=${() => setI(i + 1)}>${i === 0 ? 'Start' : 'Next'}</button>` : html`<button className="btn primary" onClick=${finish}>Finish setup</button>`}
+    </div>
+  </div>`;
+}
+
+/* ===================== App shell ===================== */
+const TABS = [['home', 'Home', 'home'], ['activity', 'Activity', 'list'], ['add', 'Add', 'plus'], ['budgets', 'Budgets', 'budget'], ['health', 'Health', 'health'], ['adviser', 'Adviser', 'spark']];
+
+function App() {
+  const { profile, txs, status } = useStore();
+  const [tab, setTab] = useState(() => { const h = (location.hash || '').slice(1); return TABS.some((t) => t[0] === h && h !== 'add') ? h : 'home'; });
+  const [sheet, setSheet] = useState(null);
+  const [settings, setSettings] = useState(false);
+  const [resetup, setResetup] = useState(false);
+  const [toastEl, toast] = useToast();
+  useEffect(() => { const f = () => { const h = location.hash.slice(1); if (TABS.some((t) => t[0] === h && h !== 'add')) setTab(h); }; window.addEventListener('hashchange', f); return () => window.removeEventListener('hashchange', f); }, []);
+  const go = (t) => { if (t === 'add') { setSheet({}); return; } setTab(t); try { history.replaceState(null, '', '#' + t); } catch (e) { location.hash = t; } window.scrollTo(0, 0); };
+
+  if (!status.loaded) return html`<div className="screen"><div className="topbar"><h1>Finance OS</h1></div>
+    <div className="card">${status.stale ? (status.error || 'Your saved data cannot be reached yet. Check your connection; nothing has been changed.') : 'Loading your saved data…'}</div></div>`;
+
+  // Only offer first-run setup once the store has confirmed there is no saved profile.
+  if (!profile && !status.confirmed) return html`<div className="screen"><div className="topbar"><h1>Finance OS</h1></div><div className="card">Checking your saved data…</div></div>`;
+  if (!profile || !profile.setupDone || resetup) {
+    const mirror = !profile && status.mode === 'cloud' ? store.readMirror() : null;
+    return html`<${React.Fragment}>
+      ${mirror ? html`<div className="screen" style=${{ paddingBottom: 0 }}><div className="banner warn" style=${{ marginTop: '12px' }}><div className="grow">A copy of your data from ${new Date(mirror.at).toLocaleDateString('en-IN')} is still in this browser, but your account store is empty.</div>
+        <button className="btn sm" onClick=${() => Promise.all(Object.entries(mirror.docs).map(([k, v]) => store.write(k, v))).then(() => toast('Restored from this device'))}>Restore it</button></div></div>` : null}
+      <${Setup} existing=${profile && profile.setupDone ? profile : null} txs=${txs} onCancel=${resetup ? () => setResetup(false) : null}
+        onDone=${(out) => saveProfile(out).then(() => { setResetup(false); toast('Setup saved'); }).catch((e) => toast('Not saved: ' + e.code))} />
+      ${toastEl}</${React.Fragment}>`;
+  }
+  const p = Object.assign(C.blankState(), profile);
+  const props = { p, txs, toast, status };
+  return html`<${React.Fragment}>
+    ${status.mode === 'local' ? html`<div style=${{ paddingInline: 'max(16px, env(safe-area-inset-left, 0px))', paddingTop: '10px' }}><div className="banner bad small">Saved in this browser only, not to your account. Open the app inside Claude for cloud saving, and export backups from Settings.</div></div>` : null}
+    ${status.error ? html`<div style=${{ paddingInline: 'max(16px, env(safe-area-inset-left, 0px))', paddingTop: '10px' }}><div className="banner bad small"><div className="grow">${status.error}</div>${status.failedDocs.length ? html`<button className="btn sm" onClick=${() => store.retry()}>Retry</button>` : null}</div></div>` : null}
+    ${tab === 'home' ? html`<${Home} ...${props} go=${go} openAdd=${() => setSheet({})} openTx=${(t) => setSheet(t)} openSettings=${() => setSettings(true)} />` : null}
+    ${tab === 'activity' ? html`<${Activity} ...${props} openTx=${(t) => setSheet(t)} />` : null}
+    ${tab === 'budgets' ? html`<${Budgets} ...${props} />` : null}
+    ${tab === 'health' ? html`<${Health} ...${props} openAdd=${(t) => setSheet(t)} />` : null}
+    ${tab === 'adviser' ? html`<${Adviser} ...${props} />` : null}
+    <nav className="nav" aria-label="Sections"><div className="in">
+      ${TABS.map(([k, l, ic]) => k === 'add'
+        ? html`<button key=${k} className="add" aria-label="Add transaction" onClick=${() => setSheet({})}><span className="fab"><${Icon} name="plus" /></span></button>`
+        : html`<button key=${k} className=${tab === k ? 'on' : ''} aria-current=${tab === k ? 'page' : undefined} onClick=${() => go(k)}><${Icon} name=${ic} />${l}</button>`)}
+    </div></nav>
+    ${sheet ? html`<${AddSheet} key=${sheet.id || 'new'} p=${p} txs=${txs} initial=${sheet} onClose=${() => setSheet(null)} toast=${toast} />` : null}
+    ${settings ? html`<${Settings} ...${props} onClose=${() => setSettings(false)} rerunSetup=${() => { setSettings(false); setResetup(true); }} />` : null}
+    ${toastEl}
+  </${React.Fragment}>`;
+}
+
+applyThemeAttr(lsGet('financeos.theme') || 'system');
+ReactDOM.createRoot(document.getElementById('root')).render(html`<${App} />`);
+store.start();
+</script>
