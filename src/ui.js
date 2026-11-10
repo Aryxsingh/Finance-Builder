@@ -125,6 +125,45 @@ function createStore() {
 }
 const store = createStore();
 
+/* Running inside the Android app (WebView with a native bridge), not a Claude artifact viewer. */
+const IS_APP = !!window.AndroidBridge;
+const API_KEY_KEY = 'financeos.apiKey';
+
+/** Offer a generated file: artifact downloads, else the Android bridge. Resolves a short "saved where" note. */
+async function saveFile(filename, data) {
+  const dl = await useCap('downloads');
+  if (dl) { await dl.save({ filename, data }); return 'Exported ' + filename; }
+  if (window.AndroidBridge) {
+    const r = String(window.AndroidBridge.saveFile(filename, String(data)));
+    if (r.startsWith('ok:')) return 'Saved to ' + r.slice(3);
+    throw { code: 'save_failed', message: r.replace(/^err:/, '') };
+  }
+  throw { code: 'unavailable' };
+}
+
+/** Claude API caller with the same shape as the artifact `sample` capability (used in the Android app). */
+function makeApiSampler(key) {
+  return async (input, opts) => {
+    opts = opts || {};
+    const turns = typeof input === 'string' ? [{ role: 'user', content: input }] : input;
+    const messages = [];
+    for (const t of turns) { const last = messages[messages.length - 1]; if (last && last.role === t.role) last.content += '\n\n' + t.content; else messages.push({ role: t.role, content: t.content }); }
+    let res;
+    try {
+      res = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST', signal: opts.signal,
+        headers: { 'content-type': 'application/json', 'x-api-key': key, 'anthropic-version': '2026-10-21', 'anthropic-beta': 'server-side-fallback-2026-07-01', 'anthropic-dangerous-direct-browser-access': 'true' },
+        body: JSON.stringify({ model: 'claude-opus-5-5', max_tokens: 16000, fallbacks: 'default', messages }),
+      });
+    } catch (e) { throw { code: e && e.name === 'AbortError' ? 'cancelled' : 'network', message: String(e) }; }
+    const j = await res.json().catch(() => ({}));
+    if (!res.ok) throw { code: res.status === 401 ? 'bad_key' : res.status === 429 ? 'rate_limited' : 'api_' + res.status, message: (j.error && j.error.message) || '' };
+    if (j.stop_reason === 'refusal') throw { code: 'refusal', message: 'Claude declined to answer this one.' };
+    const text = (j.content || []).filter((b) => b.type === 'text').map((b) => b.text).join('');
+    return { text, truncated: j.stop_reason === 'max_tokens' };
+  };
+}
+
 function useStore() {
   const [, force] = useState(0);
   useEffect(() => store.subscribe(() => force((n) => n + 1)), []);

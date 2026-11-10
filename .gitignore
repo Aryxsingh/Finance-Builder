@@ -1,0 +1,6 @@
+android/finance-os.keystore
+libs/
+android/app/src/main/assets/
+android/.gradle/
+android/app/build/
+FinanceOS.apk

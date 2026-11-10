@@ -227,9 +227,8 @@ function Activity({ p, txs, openTx, toast }) {
   const groups = []; for (const t of filtered) { const g = groups[groups.length - 1]; if (g && g.date === t.date) g.items.push(t); else groups.push({ date: t.date, items: [t] }); }
   const outT = C.sum(filtered.filter(C.isSpend), C.myShare), inT = C.sum(filtered.filter((t) => t.type === 'income'), (t) => t.amount);
   async function exportCSV() {
-    const dl = await useCap('downloads');
-    if (!dl) { toast('Downloads are not available here'); return; }
-    try { await dl.save({ filename: 'transactions' + (mk ? '-' + mk : '') + '.csv', data: C.toCSV(filtered) }); toast('CSV exported'); } catch (e) { if (e.code !== 'declined') toast('Export failed: ' + e.code); }
+    try { toast(await saveFile('transactions' + (mk ? '-' + mk : '') + '.csv', C.toCSV(filtered))); }
+    catch (e) { if (e.code !== 'declined') toast(e.code === 'unavailable' ? 'Exporting is not available here' : 'Export failed: ' + (e.message || e.code)); }
   }
   return html`<div class="screen">
     <div class="topbar"><h1>Activity</h1></div>

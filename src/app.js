@@ -55,7 +55,7 @@ function Adviser({ p, txs }) {
   const [sample, setSample] = useState(undefined);
   const ctl = useRef(null);
   const endRef = useRef();
-  useEffect(() => { useCap('sample').then((s) => setSample(() => s || null)).catch(() => setSample(null)); }, []);
+  useEffect(() => { useCap('sample').then((s) => { const k = lsGet(API_KEY_KEY); setSample(() => s || (k ? makeApiSampler(k) : null)); }).catch(() => setSample(null)); }, []);
   useEffect(() => { if (endRef.current) endRef.current.scrollIntoView({ block: 'end' }); }, [turns]);
   const d = today();
   const data = adviserData(p, txs, d);
@@ -87,7 +87,10 @@ function Adviser({ p, txs }) {
     } catch (e) {
       const msg = e.code === 'not_granted' ? 'Claude access was not allowed for this app. Allow it from the artifact permissions to use the adviser.'
         : e.code === 'rate_limited' ? 'Usage limit reached for now. Try again a little later.'
-        : e.code === 'cancelled' ? (e.text || '') + '\n(Stopped)' : 'The adviser could not answer (' + e.code + ').';
+        : e.code === 'cancelled' ? (e.text || '') + '\n(Stopped)'
+        : e.code === 'bad_key' ? 'Your Anthropic API key was rejected. Check it in Settings.'
+        : e.code === 'network' ? 'No internet connection. The adviser needs to be online.'
+        : 'The adviser could not answer (' + e.code + ')' + (e.message ? ': ' + e.message : '') + '.';
       setTurns((ts) => ts.map((x) => x.id === id ? Object.assign({}, x, { content: msg, thinking: false, error: e.code !== 'cancelled' }) : x));
     }
     setBusy(false);
@@ -96,7 +99,7 @@ function Adviser({ p, txs }) {
   const chips = ['Can I spend ₹8,000 on shoes?', 'Can I afford a ₹15,000 phone?', 'How much can I spend this weekend?', 'Am I overspending on food?', 'Should I pay my credit-card debt first?', 'How much should I save this month?', 'How much will I have left by month end?', 'Can I afford a vacation next month?', 'Can I afford to buy a car?'];
   return html`<div class="screen">
     <div class="topbar"><h1>Adviser</h1>${turns.length ? html`<button class="btn sm" onClick=${() => setTurns([])}>New chat</button>` : null}</div>
-    ${sample === null ? html`<div class="banner warn">The AI adviser needs this page to be open inside Claude with access to Claude allowed. Everything else in the app works without it.</div>` : null}
+    ${sample === null ? html`<div class="banner warn">${IS_APP ? 'To use the adviser in the app, add your Anthropic API key in Settings (gear icon on Home). Everything else works without it.' : 'The AI adviser needs this page to be open inside Claude with access to Claude allowed. Everything else in the app works without it.'}</div>` : null}
     ${!turns.length ? html`<div class="card"><h2>Ask about your money</h2>
       <div class="small muted" style=${{ marginBottom: '10px' }}>Answers use your recorded balance, bills, EMIs, cards, budgets and goals. Purchase questions get YES, WAIT or NO.</div>
       <div class="chips wrap">${chips.map((c) => html`<button key=${c} class="chip" disabled=${!sample} onClick=${() => ask(c)}>${c}</button>`)}</div>
@@ -132,9 +135,8 @@ function Settings({ p, txs, status, onClose, toast, rerunSetup }) {
   }
   function applyTheme(v) { setTheme(v); lsSet('financeos.theme', v); applyThemeAttr(v); }
   async function download(name, data) {
-    const dl = await useCap('downloads');
-    if (!dl) { toast('Downloads are not available in this view'); return; }
-    try { await dl.save({ filename: name, data }); toast('Exported ' + name); } catch (e) { if (e.code !== 'declined') toast('Export failed: ' + e.code); }
+    try { toast(await saveFile(name, data)); }
+    catch (e) { if (e.code !== 'declined') toast(e.code === 'unavailable' ? 'Exporting is not available here' : 'Export failed: ' + (e.message || e.code)); }
   }
   const backup = () => JSON.stringify({ app: 'finance-os', version: 1, exportedAt: new Date().toISOString(), profile: p, transactions: txs }, null, 1);
   function onFile(e) {
@@ -162,6 +164,7 @@ function Settings({ p, txs, status, onClose, toast, rerunSetup }) {
   return html`<${Sheet} title="Settings" onClose=${onClose}>
     <div class="card"><h2>Your data</h2>
       ${status.mode === 'cloud' ? html`<div class="small">Saved privately to your Claude account (only you can read it), so it is there on your iPhone and any other device where you open this app.</div>`
+      : IS_APP ? html`<div class="small">Saved on this phone only. Uninstalling the app or clearing its storage deletes it, and it does not sync with the Claude artifact. Export a backup regularly.</div>`
       : html`<div class="banner bad small">Cloud storage is not available in this view, so data is saved in this browser only. It can be lost if browser data is cleared, and it will not appear on other devices. Export a backup regularly.</div>`}
       <div class="kv" style=${{ marginTop: '10px' }}><span>Last saved</span><span>${status.lastSaved ? status.lastSaved.toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }) : '—'}</span>
         <span>Transactions stored</span><span>${txs.length}</span></div>
@@ -173,6 +176,7 @@ function Settings({ p, txs, status, onClose, toast, rerunSetup }) {
     <div class="card"><h2>Safety cushion</h2>
       <div class="small muted" style=${{ marginBottom: '8px' }}>Always kept back from Safe to Spend.</div>
       <div class="row"><${NumInput} id="set-cushion" value=${cushion} onChange=${setCushion} /><button class="btn" onClick=${() => saveProfile(Object.assign({}, p, { cushion: C.num(cushion) })).then(() => toast('Saved'))}>Save</button></div></div>
+    ${IS_APP ? html`<${ApiKeyCard} toast=${toast} />` : null}
     <div class="card"><h2>Appearance</h2><${Seg} value=${theme} onChange=${applyTheme} options=${[{ v: 'system', l: 'System' }, { v: 'light', l: 'Light' }, { v: 'dark', l: 'Dark' }]} /></div>
     <div class="card"><h2>Backup & restore</h2><div class="stack">
       <button class="btn block" onClick=${() => download('finance-os-backup-' + today() + '.json', backup())}>Export full backup (JSON)</button>
@@ -188,6 +192,17 @@ function Settings({ p, txs, status, onClose, toast, rerunSetup }) {
     <button class="btn block" onClick=${rerunSetup}>Run the setup again</button>
     <div class="small muted">Safe to Spend = estimated bank balance − bills, EMIs, card dues, planned expenses and debts due before payday − savings still to set aside this month − cushion.</div>
   </${Sheet}>`;
+}
+
+function ApiKeyCard({ toast }) {
+  const [key, setKey] = useState('');
+  const has = !!lsGet(API_KEY_KEY);
+  return html`<div class="card"><h2>AI adviser</h2>
+    <div class="small muted" style=${{ marginBottom: '8px' }}>The app calls Claude with your own Anthropic API key (console.anthropic.com). Usage is billed to that key. The key is stored only on this phone.</div>
+    <div class="row"><input id="set-apikey" class="input" type="password" autocomplete="off" placeholder=${has ? 'Key saved. Paste a new one to replace' : 'sk-ant-…'} value=${key} onChange=${(e) => setKey(e.target.value.trim())} />
+      <button class="btn primary" onClick=${() => { if (!key) return; lsSet(API_KEY_KEY, key); setKey(''); toast('API key saved'); }}>Save</button></div>
+    ${has ? html`<button class="link" style=${{ marginTop: '8px', color: 'var(--bad)' }} onClick=${() => { try { localStorage.removeItem(API_KEY_KEY); } catch (e) {} toast('API key removed'); setKey(' '); setKey(''); }}>Remove key</button>` : null}
+  </div>`;
 }
 
 let initialThemeAttr = null;
@@ -294,7 +309,7 @@ function App() {
   const p = Object.assign(C.blankState(), profile);
   const props = { p, txs, toast, status };
   return html`<${React.Fragment}>
-    ${status.mode === 'local' ? html`<div style=${{ paddingInline: 'max(16px, env(safe-area-inset-left, 0px))', paddingTop: '10px' }}><div class="banner bad small">Saved in this browser only, not to your account. Open the app inside Claude for cloud saving, and export backups from Settings.</div></div>` : null}
+    ${status.mode === 'local' && !IS_APP ? html`<div style=${{ paddingInline: 'max(16px, env(safe-area-inset-left, 0px))', paddingTop: '10px' }}><div class="banner bad small">Saved in this browser only, not to your account. Open the app inside Claude for cloud saving, and export backups from Settings.</div></div>` : null}
     ${status.error ? html`<div style=${{ paddingInline: 'max(16px, env(safe-area-inset-left, 0px))', paddingTop: '10px' }}><div class="banner bad small"><div class="grow">${status.error}</div>${status.failedDocs.length ? html`<button class="btn sm" onClick=${() => store.retry()}>Retry</button>` : null}</div></div>` : null}
     ${tab === 'home' ? html`<${Home} ...${props} go=${go} openAdd=${() => setSheet({})} openTx=${(t) => setSheet(t)} openSettings=${() => setSettings(true)} />` : null}
     ${tab === 'activity' ? html`<${Activity} ...${props} openTx=${(t) => setSheet(t)} />` : null}

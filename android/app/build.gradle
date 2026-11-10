@@ -1,0 +1,44 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'com.aryxsingh.financeos'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId 'com.aryxsingh.financeos'
+        minSdk 26
+        targetSdk 34
+        versionCode Integer.parseInt(System.getenv('VERSION_CODE') ?: '1')
+        versionName '1.0.' + (System.getenv('VERSION_CODE') ?: '1')
+    }
+
+    // Signed with the key the build workflow puts at android/finance-os.keystore
+    // (your GitHub secret if set, otherwise a one-off key made for that build).
+    signingConfigs {
+        app {
+            storeFile file('../finance-os.keystore')
+            storePassword System.getenv('KEYSTORE_PASSWORD')
+            keyAlias System.getenv('KEY_ALIAS') ?: 'financeos'
+            keyPassword System.getenv('KEYSTORE_PASSWORD')
+        }
+    }
+    buildTypes {
+        release {
+            minifyEnabled false
+            signingConfig signingConfigs.app
+        }
+    }
+    lint {
+        checkReleaseBuilds false
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
+
+dependencies {
+    implementation 'androidx.webkit:webkit:1.11.0'
+}

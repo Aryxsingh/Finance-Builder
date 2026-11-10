@@ -1,0 +1,80 @@
+name: Android APK
+
+on:
+  push:
+    branches: [main, claude/friendly-planck-jvq6qs]
+    paths: ['src/**', 'android/**', 'build.sh', '.github/workflows/android.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+
+      - name: Bundle the web app with its libraries (works offline)
+        run: |
+          mkdir -p libs
+          curl -fsSL -o libs/react.production.min.js https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js
+          curl -fsSL -o libs/react-dom.production.min.js https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js
+          curl -fsSL -o libs/htm.umd.js https://cdn.jsdelivr.net/npm/htm@3.1.1/dist/htm.umd.js
+          ./build.sh
+          android/build-web.sh libs
+
+      # A stable key lets each new APK install over the old one (keeping your data).
+      # Add repository secrets ANDROID_KEYSTORE_BASE64 and ANDROID_KEYSTORE_PASSWORD to use yours;
+      # without them a one-off key is made, and updating then needs an uninstall first.
+      - name: Prepare signing key
+        env:
+          KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEYSTORE_PW: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+        run: |
+          if [ -n "$KEYSTORE_B64" ] && [ -n "$KEYSTORE_PW" ]; then
+            echo "$KEYSTORE_B64" | base64 -d > android/finance-os.keystore
+            echo "KEYSTORE_PASSWORD=$KEYSTORE_PW" >> "$GITHUB_ENV"
+            echo "SIGNING_NOTE=Signed with your stable key: installs over earlier builds." >> "$GITHUB_ENV"
+          else
+            PW=$(openssl rand -hex 16)
+            echo "::add-mask::$PW"
+            keytool -genkeypair -keystore android/finance-os.keystore -storepass "$PW" -keypass "$PW" \
+              -alias financeos -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Finance OS"
+            echo "KEYSTORE_PASSWORD=$PW" >> "$GITHUB_ENV"
+            echo "SIGNING_NOTE=Signed with a one-off key: to install a later build, export a backup, uninstall, install, then restore." >> "$GITHUB_ENV"
+          fi
+
+      - name: Build signed APK
+        env:
+          VERSION_CODE: ${{ github.run_number }}
+        run: |
+          gradle -p android assembleRelease --no-daemon
+          cp android/app/build/outputs/apk/release/app-release.apk FinanceOS.apk
+          rm -f android/finance-os.keystore
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: FinanceOS-apk
+          path: FinanceOS.apk
+
+      - name: Publish to the "android-latest" release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: android-latest
+          name: Finance OS for Android (latest build)
+          body: |
+            Build ${{ github.run_number }} from ${{ github.sha }}.
+            ${{ env.SIGNING_NOTE }}
+            Download FinanceOS.apk on your phone and open it to install.
+          files: FinanceOS.apk
+          make_latest: true
